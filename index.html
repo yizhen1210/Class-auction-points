@@ -288,6 +288,30 @@
   .display-mode #projBtn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.95);}
   .display-mode .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;margin-top:28px;}
   .sb-pend{color:var(--brass-deep);font-weight:700;}
+
+  /* 扣點當下：卡片金框閃爍 + 微放大 */
+  @keyframes cardflash{
+    0%{box-shadow:0 0 0 0 rgba(200,150,43,0);transform:scale(1);}
+    14%{box-shadow:0 0 0 4px rgba(200,150,43,.95);transform:scale(1.04);}
+    100%{box-shadow:0 0 0 0 rgba(200,150,43,0);transform:scale(1);}
+  }
+  .card.flash{animation:cardflash 1.5s ease;}
+
+  /* 投影頂部橫幅：不論卡片是否在畫面內都看得到 */
+  #touchBanner{
+    position:fixed;top:18px;left:50%;z-index:45;opacity:0;pointer-events:none;
+    transform:translateX(-50%) translateY(-20px);
+    background:rgba(28,36,32,.94);color:#f7e6bf;border:1px solid var(--brass);
+    padding:12px 28px;border-radius:999px;font-size:26px;font-weight:600;letter-spacing:.03em;
+    box-shadow:0 14px 34px -12px rgba(0,0,0,.65);
+  }
+  #touchBanner.show{animation:touchpop 1.6s ease;}
+  @keyframes touchpop{
+    0%{opacity:0;transform:translateX(-50%) translateY(-20px);}
+    12%{opacity:1;transform:translateX(-50%) translateY(0);}
+    78%{opacity:1;transform:translateX(-50%) translateY(0);}
+    100%{opacity:0;transform:translateX(-50%) translateY(-12px);}
+  }
   .card.sb{align-items:center;text-align:center;gap:6px;padding:22px 16px;}
   .sb-name{font-size:30px;font-weight:600;letter-spacing:.04em;color:var(--text);}
   .sb-remain{font-size:64px;line-height:1;color:var(--green);font-variant-numeric:tabular-nums;}
@@ -346,6 +370,7 @@
 </div>
 
 <div class="stamp" id="stamp"><span>結算完成</span></div>
+<div id="touchBanner"></div>
 
 <div class="modal" id="modal">
   <div class="modal-box">
@@ -449,7 +474,10 @@
   }
   function normalize(val){
     const arr=Array.isArray(val&&val.students)?val.students:[];
-    return {students:arr.map(s=>({
+    const lt=(val&&val.lastTouch&&val.lastTouch.id)
+      ? {id:String(val.lastTouch.id),delta:Math.round(+val.lastTouch.delta)||0,ts:+val.lastTouch.ts||0}
+      : null;
+    return {lastTouch:lt, students:arr.map(s=>({
       id:s.id||uid(),name:String(s.name||'未命名'),
       init:Math.max(0,parseInt(s.init,10)||0),
       balance:(s.balance!=null?Math.round(+s.balance):(parseInt(s.init,10)||0)),
@@ -570,7 +598,9 @@
   function addPending(id,label,points){
     const p=Math.round(+points); if(!p)return;
     const s=state.students.find(x=>x.id===id); if(!s)return;
-    s.pending.push({id:uid(),label:(label||'').trim()||'競標',points:p}); commit();
+    s.pending.push({id:uid(),label:(label||'').trim()||'競標',points:p});
+    state.lastTouch={id:id,delta:p,ts:Date.now()};
+    commit();
   }
   function removePending(sid,pid){
     const s=state.students.find(x=>x.id===sid); if(!s)return;
@@ -618,12 +648,13 @@
       grid.innerHTML=state.students.map(s=>{
         const pt=pendTotal(s); const remain=s.balance-pt; const over=remain<0;
         const sub = over ? ('超扣 '+(-remain)+' 點') : ('剩餘點數'+(pt?(' · <span class="sb-pend">待扣 '+pt+'</span>'):''));
-        return `<div class="card sb ${over?'over':''}">
+        return `<div class="card sb ${over?'over':''}" data-card="${s.id}">
           <div class="sb-name">${esc(s.name)}</div>
           <div class="sb-remain">${remain}</div>
           <div class="sb-sub">${sub}</div>
         </div>`;
       }).join('');
+      maybeFlash();
       return;
     }
 
@@ -636,7 +667,7 @@
         `<span class="pval">−${p.points}</span>`+
         `<button class="x" data-act="rmpend" data-s="${s.id}" data-p="${p.id}" title="移除">✕</button></div>`
       ).join('');
-      return `<div class="card ${over?'over':''}">
+      return `<div class="card ${over?'over':''}" data-card="${s.id}">
         <div class="crow">
           <span class="cname">${esc(s.name)}</span>
           <span class="cinit">起始 <input type="number" min="0" value="${s.init}" data-act="init" data-s="${s.id}" style="width:calc(${Math.max(1,String(s.init).length)}ch + 10px)"> 點</span>
@@ -658,6 +689,34 @@
         <div class="cfoot"><span>本場待扣 <b>${pt}</b> 點</span><span>累計已扣 <b>${s.deducted}</b> 點</span></div>
       </div>`;
     }).join('');
+    maybeFlash();
+  }
+
+  /* ---------- 扣點提示：卡片閃爍 + 投影頂部橫幅 ---------- */
+  let flashedTs=null, primed=false;
+  function maybeFlash(){
+    const lt=state.lastTouch;
+    if(!primed){ primed=true; flashedTs=lt?lt.ts:0; return; }   // 首次載入不閃舊紀錄
+    if(lt && lt.ts!==flashedTs){
+      flashedTs=lt.ts;
+      const s=state.students.find(x=>x.id===lt.id);
+      if(s){
+        flashCard(lt.id);
+        if(isDisplay()) showTouchBanner(s.name, lt.delta, s.balance-pendTotal(s));
+      }
+    }
+  }
+  function flashCard(id){
+    requestAnimationFrame(()=>{
+      let sel; try{sel='[data-card="'+CSS.escape(id)+'"]';}catch(e){sel='[data-card="'+id+'"]';}
+      const el=document.querySelector(sel); if(!el)return;
+      el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+    });
+  }
+  function showTouchBanner(name,delta,remain){
+    const b=document.getElementById('touchBanner'); if(!b)return;
+    b.textContent=name+'　−'+delta+'　剩 '+remain;
+    b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
   }
 
   /* ---------- 事件代理 ---------- */
