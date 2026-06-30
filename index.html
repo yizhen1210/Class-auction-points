@@ -53,7 +53,7 @@
     46%{transform:rotate(6deg)} 60%{transform:rotate(-12deg)}
     100%{transform:rotate(0)}
   }
-  .title h1{margin:0;font-size:30px;letter-spacing:.04em;}
+  .title h1{margin:0;font-size:30px;letter-spacing:.04em;user-select:none;-webkit-user-select:none;cursor:default;}
   .title p{margin:3px 0 0;color:#b9c2b6;font-size:15px;}
 
   .totals{margin-left:auto;display:flex;gap:14px;flex-wrap:wrap;}
@@ -218,6 +218,21 @@
   .cloud-login .fld{flex:1;min-width:160px;background:#fff;color:var(--text);border:1px solid #d9cdab;}
 
   .hint{margin-top:14px;font-size:13px;color:#8e978b;line-height:1.7;}
+
+  /* ---------- 投影模式（?display=1）：唯讀看板，隱藏所有編輯控制 ---------- */
+  .display-mode .addbar,
+  .display-mode .hint,
+  .display-mode #projBtn,
+  .display-mode #settleBtn,
+  .display-mode #clearBtn{display:none!important;}
+  .display-mode .top{justify-content:center;text-align:center;}
+  .display-mode .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;}
+  .card.sb{align-items:center;text-align:center;gap:6px;padding:22px 16px;}
+  .sb-name{font-size:30px;font-weight:600;letter-spacing:.04em;color:var(--text);}
+  .sb-remain{font-size:64px;line-height:1;color:var(--green);font-variant-numeric:tabular-nums;}
+  .card.sb.over .sb-remain{color:var(--red);}
+  .sb-sub{font-size:16px;color:var(--muted);}
+  .card.sb.over .sb-sub{color:var(--red);}
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition:none!important;}
   }
@@ -256,10 +271,7 @@
   </div>
 
   <div class="toolbar">
-    <button class="btn ghost" id="expJson">⬇ 匯出存檔（JSON）</button>
-    <button class="btn ghost" id="expCsv">⬇ 匯出名單（CSV）</button>
-    <button class="btn ghost" id="impBtn">⬆ 匯入存檔</button>
-    <button class="btn ghost" id="cloudBtn">☁ 雲端同步</button>
+    <button class="btn ghost" id="projBtn">🖥 開啟投影畫面</button>
     <span class="cloudstat" id="cloudStat">未連線（僅存本機）</span>
   </div>
 
@@ -268,7 +280,7 @@
 
   <p class="hint">
     說明：每筆「待扣」會即時從起始點數預估剩餘，<b style="color:#d8b25a">紅字代表已超扣</b>（喊價超過手上點數），可當場提醒學生。
-    這些點數<b style="color:#d8b25a">不會立刻扣掉</b>，要等你按下「結算扣點」才一次正式扣除並更新餘額。資料會自動保存於本機；要長期保存或換裝置，請用上方<b style="color:#d8b25a">匯出存檔（JSON）</b>備份、再用<b style="color:#d8b25a">匯入存檔</b>還原。CSV 則供 Excel 檢視名單。
+    這些點數<b style="color:#d8b25a">不會立刻扣掉</b>，要等你按下「結算扣點」才一次正式扣除並更新餘額。
   </p>
 </div>
 
@@ -284,29 +296,16 @@
   </div>
 </div>
 
-<div class="modal" id="datamodal">
-  <div class="modal-box big">
-    <p class="modal-msg" id="dm-title"></p>
-    <textarea id="dm-text" class="dm-text" spellcheck="false"></textarea>
-    <input type="file" id="dm-file" accept=".json,application/json" hidden>
-    <div class="modal-act" id="dm-act"></div>
-  </div>
-</div>
-
 <div class="modal" id="cloudmodal">
   <div class="modal-box big">
-    <p class="modal-msg">雲端同步（以老師帳號登入）</p>
-    <p class="cloud-help" id="cloud-help">
-      <b>首次在這台裝置</b>才需貼上 Firebase 設定（記在本機，之後免再貼）。日常只要用老師的 Email、密碼登入——<b>同一組帳號在任何裝置都是同一份資料，沒帳密就進不去</b>。第一次使用請先按「註冊新帳號」建立帳密。
-    </p>
-    <textarea id="cloud-cfg" class="dm-text" spellcheck="false" placeholder='首次設定才需貼，例如：&#10;{&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "...",&#10;  appId: "..."&#10;}'></textarea>
+    <p class="modal-msg">登入</p>
+    <p class="cloud-help">輸入密碼即可操作。<b>第一次使用請先按「註冊」</b>設定密碼。登入後這台裝置會記住，下次開啟免再輸入。</p>
     <div class="cloud-login">
-      <input id="cloud-email" class="fld" type="email" placeholder="老師 Email" autocomplete="username">
       <input id="cloud-pw" class="fld" type="password" placeholder="密碼（至少 6 碼）" autocomplete="current-password">
     </div>
     <div class="modal-act">
       <button class="m-no" id="cloud-close">關閉</button>
-      <button class="m-extra" id="cloud-signup">註冊新帳號</button>
+      <button class="m-extra" id="cloud-signup">註冊</button>
       <button class="m-extra" id="cloud-logout">登出</button>
       <button class="m-ok" id="cloud-login">登入</button>
     </div>
@@ -317,6 +316,8 @@
 (function(){
   "use strict";
   const KEY='auction-points-v1';
+  const DISPLAY = new URLSearchParams(location.search).get('display')==='1';
+  if(DISPLAY) document.body.classList.add('display-mode');
   const CFGKEY='auction-fb-cfg-v1';
   let state={students:[]};
 
@@ -340,6 +341,10 @@
   function embeddedCfg(){
     return (EMBEDDED_CONFIG.apiKey && EMBEDDED_CONFIG.projectId) ? EMBEDDED_CONFIG : null;
   }
+
+  /* 內定登入帳號（畫面不顯示；只是帳號名，密碼仍由你登入時手打）。
+     要換帳號就改這一行的字串即可。 */
+  const ACCOUNT_EMAIL = "annychen1210@gmail.com";
 
   /* ---------- 本機保存：優先用 Claude 持久層，否則退回 localStorage（下載離線可用） ---------- */
   async function saveLocal(){
@@ -374,79 +379,7 @@
     });
   }
 
-  /* ---------- 匯出 / 匯入 ---------- */
-  function stampStr(){const d=new Date(),p=n=>String(n).padStart(2,'0');
-    return ''+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());}
-
-  function download(filename,text,mime){
-    try{
-      const url=URL.createObjectURL(new Blob([text],{type:mime||'text/plain;charset=utf-8'}));
-      const a=document.createElement('a');a.href=url;a.download=filename;
-      document.body.appendChild(a);a.click();
-      setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},100);
-    }catch(e){}
-  }
-  function copyText(t){
-    const ta=document.getElementById('dm-text');
-    try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t);} }catch(e){}
-    try{ta.focus();ta.select();ta.setSelectionRange(0,t.length);document.execCommand('copy');}catch(e){}
-  }
-
-  function dmButtons(defs){
-    const act=document.getElementById('dm-act');act.innerHTML='';
-    defs.forEach(d=>{const b=document.createElement('button');b.className=d.cls;b.textContent=d.label;b.onclick=d.fn;act.appendChild(b);});
-  }
-  function openData(o){
-    document.getElementById('dm-title').textContent=o.title;
-    const ta=document.getElementById('dm-text');
-    ta.value=o.text||'';ta.readOnly=!!o.readonly;ta.placeholder=o.placeholder||'';
-    dmButtons(o.buttons);
-    document.getElementById('datamodal').classList.add('show');
-  }
-  const closeData=()=>document.getElementById('datamodal').classList.remove('show');
-
-  function exportJSON(){
-    if(!state.students.length){ask('目前沒有任何學生可以匯出。');return;}
-    const text=JSON.stringify(state,null,2), fn='拍賣會存檔_'+stampStr()+'.json';
-    openData({title:'匯出存檔（JSON）— 用來備份與還原全部資料',readonly:true,text,buttons:[
-      {cls:'m-no',label:'關閉',fn:closeData},
-      {cls:'m-extra',label:'全選複製',fn:()=>copyText(text)},
-      {cls:'m-ok',label:'下載檔案',fn:()=>download(fn,text,'application/json;charset=utf-8')}
-    ]});
-  }
-  function csvCell(v){v=String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
-  function exportCSV(){
-    if(!state.students.length){ask('目前沒有任何學生可以匯出。');return;}
-    const head=['姓名','起始點數','目前餘額','本場待扣','累計已扣'];
-    const rows=state.students.map(s=>[s.name,s.init,s.balance,pendTotal(s),s.deducted]);
-    const csv=[head].concat(rows).map(r=>r.map(csvCell).join(',')).join('\r\n');
-    const fn='拍賣會名單_'+stampStr()+'.csv';
-    openData({title:'匯出名單（CSV，可用 Excel 開啟）',readonly:true,text:csv,buttons:[
-      {cls:'m-no',label:'關閉',fn:closeData},
-      {cls:'m-extra',label:'全選複製',fn:()=>copyText(csv)},
-      {cls:'m-ok',label:'下載檔案',fn:()=>download(fn,'\ufeff'+csv,'text/csv;charset=utf-8')}
-    ]});
-  }
-  function openImport(){
-    openData({title:'匯入存檔：選擇 .json 檔，或把存檔內容貼進來',readonly:false,text:'',
-      placeholder:'在此貼上 JSON 存檔內容…',buttons:[
-        {cls:'m-no',label:'取消',fn:closeData},
-        {cls:'m-extra',label:'選擇檔案',fn:()=>document.getElementById('dm-file').click()},
-        {cls:'m-ok',label:'匯入',fn:doImport}
-      ]});
-  }
-  async function doImport(){
-    const raw=document.getElementById('dm-text').value.trim();
-    if(!raw){await ask('請先貼上存檔內容或選擇檔案。');return;}
-    let data;try{data=JSON.parse(raw);}catch(e){await ask('內容不是有效的存檔格式，請確認後再試。');return;}
-    if(!data||!Array.isArray(data.students)){await ask('找不到學生名單，這份檔案可能不是本工具的存檔。');return;}
-    closeData();
-    if(state.students.length && !(await ask('匯入會覆蓋目前畫面上的所有資料，確定？')))return;
-    state=normalize(data);
-    commit();
-  }
-
-  /* ---------- 雲端同步（Firebase Realtime Database） ---------- */
+  /* ---------- 雲端同步（Firebase Cloud Firestore） ---------- */
   function setCloudStatus(txt,cls){
     const el=document.getElementById('cloudStat');
     if(el){el.textContent=txt;el.className='cloudstat '+(cls||'');}
@@ -498,7 +431,7 @@
           setCloudStatus('已登入 · '+user.email,'ok');
         }else{
           fb.connected=false; fb.user=null; fb.write=null;
-          setCloudStatus('已設定，請登入','wait');
+          setCloudStatus('請登入','wait');
         }
       });
       return true;
@@ -506,7 +439,8 @@
   }
   function readCfgField(){
     const emb=embeddedCfg(); if(emb) return emb;
-    const raw=document.getElementById('cloud-cfg').value.trim();
+    const el=document.getElementById('cloud-cfg');
+    const raw=el?el.value.trim():'';
     if(raw){const c=parseFbConfig(raw); if(c.apiKey&&c.projectId) return c;}
     let saved=null; try{saved=JSON.parse(localStorage.getItem(CFGKEY));}catch(e){}
     return saved&&saved.cfg?saved.cfg:null;
@@ -522,10 +456,10 @@
   }
   async function cloudAuth(isSignup){
     const cfg=readCfgField();
-    if(!cfg){await ask('首次使用請先貼上 Firebase 設定（需含 apiKey 與 projectId）。');return;}
-    const email=document.getElementById('cloud-email').value.trim();
+    if(!cfg){await ask('尚未設定 Firebase（程式內的設定遺失）。');return;}
+    const email=ACCOUNT_EMAIL;
     const pw=document.getElementById('cloud-pw').value;
-    if(!email||!pw){await ask('請輸入 Email 與密碼。');return;}
+    if(!pw){await ask('請輸入密碼。');return;}
     if(!(await ensureFb(cfg)))return;
     setCloudStatus(isSignup?'註冊中…':'登入中…','wait');
     try{
@@ -533,7 +467,7 @@
       else         await fb.authMod.signInWithEmailAndPassword(fb.auth,email,pw);
       document.getElementById('cloud-pw').value='';
       closeCloud();
-    }catch(e){ await ask(authErrMsg(e)); setCloudStatus('已設定，請登入','wait'); }
+    }catch(e){ await ask(authErrMsg(e)); setCloudStatus('請登入','wait'); }
   }
   async function cloudLogout(){
     if(fb.auth&&fb.authMod){ try{await fb.authMod.signOut(fb.auth);}catch(e){} }
@@ -543,21 +477,9 @@
     closeCloud();
   }
   function openCloud(){
-    const emb=embeddedCfg();
-    const ta=document.getElementById('cloud-cfg');
-    const help=document.getElementById('cloud-help');
-    if(emb){
-      ta.style.display='none';
-      help.innerHTML='用老師的 Email、密碼登入即可——<b>任何裝置打開這個網址都只要登入</b>，看到同一份資料，沒帳密就進不去。第一次使用請先按「註冊新帳號」。';
-    }else{
-      ta.style.display='';
-      let saved={}; try{saved=JSON.parse(localStorage.getItem(CFGKEY))||{};}catch(e){}
-      ta.value=saved.cfg?JSON.stringify(saved.cfg,null,2):'';
-      help.innerHTML='<b>首次在這台裝置</b>才需貼上 Firebase 設定（記在本機，之後免再貼）。日常只要用老師的 Email、密碼登入——<b>同一組帳號在任何裝置都是同一份資料，沒帳密就進不去</b>。第一次使用請先按「註冊新帳號」。';
-    }
-    document.getElementById('cloud-email').value=(fb.user&&fb.user.email)||'';
     document.getElementById('cloud-pw').value='';
     document.getElementById('cloudmodal').classList.add('show');
+    setTimeout(()=>{try{document.getElementById('cloud-pw').focus();}catch(e){}},50);
   }
   const closeCloud=()=>document.getElementById('cloudmodal').classList.remove('show');
   async function autoCloud(){
@@ -628,8 +550,21 @@
     const totPend=state.students.reduce((a,s)=>a+pendTotal(s),0);
     document.getElementById('t_pend').textContent=totPend;
     document.getElementById('t_stu').textContent=state.students.length;
-    document.getElementById('settleBtn').disabled=totPend<=0;
+    const sbBtn=document.getElementById('settleBtn'); if(sbBtn)sbBtn.disabled=totPend<=0;
     empty.style.display=state.students.length?'none':'block';
+
+    if(DISPLAY){
+      grid.innerHTML=state.students.map(s=>{
+        const pt=pendTotal(s); const remain=s.balance-pt; const over=remain<0;
+        const sub = over ? ('超扣 '+(-remain)+' 點') : ('剩餘點數'+(pt?(' · 待扣 '+pt):''));
+        return `<div class="card sb ${over?'over':''}">
+          <div class="sb-name">${esc(s.name)}</div>
+          <div class="sb-remain">${remain}</div>
+          <div class="sb-sub">${sub}</div>
+        </div>`;
+      }).join('');
+      return;
+    }
 
     grid.innerHTML=state.students.map(s=>{
       const pt=pendTotal(s);
@@ -692,16 +627,18 @@
   document.getElementById('s_name').addEventListener('keydown',e=>{if(e.key==='Enter')addStudent();});
   document.getElementById('settleBtn').addEventListener('click',settleAll);
   document.getElementById('clearBtn').addEventListener('click',clearAll);
-  document.getElementById('expJson').addEventListener('click',exportJSON);
-  document.getElementById('expCsv').addEventListener('click',exportCSV);
-  document.getElementById('impBtn').addEventListener('click',openImport);
-  document.getElementById('dm-file').addEventListener('change',e=>{
-    const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();
-    r.onload=()=>{document.getElementById('dm-text').value=r.result;};
-    r.readAsText(f);e.target.value='';
+  // 連點標題三下 → 開啟登入密碼框（隱藏式入口）
+  (function(){
+    const el=document.querySelector('.title h1'); if(!el)return;
+    let taps=0,timer=null;
+    el.addEventListener('click',()=>{
+      taps++; clearTimeout(timer); timer=setTimeout(()=>{taps=0;},600);
+      if(taps>=3){taps=0; clearTimeout(timer); openCloud();}
+    });
+  })();
+  document.getElementById('projBtn').addEventListener('click',()=>{
+    window.open(location.origin+location.pathname+'?display=1','_blank');
   });
-  document.getElementById('cloudBtn').addEventListener('click',openCloud);
   document.getElementById('cloud-close').addEventListener('click',closeCloud);
   document.getElementById('cloud-login').addEventListener('click',()=>cloudAuth(false));
   document.getElementById('cloud-signup').addEventListener('click',()=>cloudAuth(true));
