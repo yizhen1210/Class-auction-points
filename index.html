@@ -197,6 +197,37 @@
   .m-no{background:transparent;border:1px solid #d2c6a4;color:var(--muted);}
   .m-ok{background:var(--red);color:#fff;}
   .m-ok:active,.m-no:active{transform:translateY(1px);}
+  #cloud-login{background:linear-gradient(180deg,#e9bb55,var(--brass));color:#2a1d05;border:none;}
+  #cloud-login:active{transform:translateY(1px);}
+
+  /* 密碼提示框：依規格表的尺寸/間距（顏色沿用主題、不變） */
+  #cloudmodal .modal-box{width:min(520px,90vw);max-width:none;padding:36px 44px;border-radius:20px;}
+  #cloudmodal .modal-msg{text-align:center;font-size:22.4px;font-weight:600;color:#646b64;margin:0 0 22px;white-space:nowrap;}
+  #cloudmodal .cloud-login{margin:0 0 24px;}
+  #cloudmodal #cloud-pw{
+    flex:1;width:100%;text-align:center;font-size:17.6px;padding:12px 18px;
+    border:2px solid #d9cdab;border-radius:14px;background:#fff;color:var(--text);box-shadow:none;
+  }
+  #cloudmodal #cloud-pw::placeholder{color:#b0a585;}
+  #cloudmodal #cloud-pw:focus{border-color:var(--brass);box-shadow:0 0 0 3px rgba(200,150,43,.22);}
+  #cloudmodal .modal-act{justify-content:center;gap:18px;}
+  #cloudmodal .modal-act button{font-size:18.4px;padding:11px 38px;border-radius:50px;border:2px solid transparent;transition:filter .12s,transform .06s;}
+  #cloudmodal #cloud-login{background:linear-gradient(180deg,#e9bb55,var(--brass));color:#2a1d05;border-color:transparent;}
+  #cloudmodal #cloud-login:hover{filter:brightness(1.06);}
+  #cloudmodal #cloud-close{background:transparent;border:2px solid #d2c6a4;color:var(--muted);}
+  #cloudmodal #cloud-close:hover{border-color:var(--brass);}
+  @media (max-width:640px){
+    #cloudmodal .modal-box{width:min(420px,88vw);padding:26px 22px;}
+    #cloudmodal .modal-msg{font-size:min(20.8px, calc((88vw - 56px) / 15));margin:0 0 18px;}
+  }
+  /* 編輯模式的紅色登出鈕（含 hover），未登入時隱藏 */
+  #logoutBtn{display:none;background:var(--red);color:#fff;border:none;border-radius:11px;
+    padding:12px 22px;font-size:16px;font-family:inherit;cursor:pointer;transition:filter .12s,transform .06s;}
+  #logoutBtn:hover{filter:brightness(1.1);}
+  #logoutBtn:active{transform:translateY(1px);}
+  body.auth-in #logoutBtn{display:inline-block;}
+  /* 未登入時不顯示「新增學生」欄位 */
+  body:not(.auth-in) .addbar{display:none!important;}
   #modal{z-index:70;}                 /* 確認框永遠蓋在資料視窗之上 */
   .m-extra{background:transparent;border:1px solid var(--brass);color:var(--brass-deep);}
   .m-extra:active{transform:translateY(1px);}
@@ -233,13 +264,15 @@
   .display-mode .top{justify-content:center;text-align:center;padding:16px 20px;}
   .display-mode .title h1{font-size:40px;}
   .display-mode .toolbar{margin:0;height:0;}
-  /* 結束投影：固定右上角，永不重疊標題 */
+  .display-mode #logoutBtn{display:none!important;}
+  /* 結束投影：右上角圓形 ✕ */
   .display-mode #projBtn{
     position:fixed;top:16px;right:16px;z-index:40;
-    font-size:16px;padding:10px 18px;
-    background:rgba(0,0,0,.4);color:#eef1ea;border:1px solid var(--line);
+    width:46px;height:46px;padding:0;border-radius:50%;
+    font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.45);color:#eef1ea;border:1px solid var(--line);
   }
-  .display-mode #projBtn:hover{background:rgba(0,0,0,.55);}
+  .display-mode #projBtn:hover{background:rgba(0,0,0,.6);}
   .display-mode .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;}
   .card.sb{align-items:center;text-align:center;gap:6px;padding:22px 16px;}
   .sb-name{font-size:30px;font-weight:600;letter-spacing:.04em;color:var(--text);}
@@ -286,6 +319,7 @@
 
   <div class="toolbar">
     <button class="btn ghost" id="projBtn">🖥 投影模式</button>
+    <button id="logoutBtn">登出</button>
   </div>
 
   <div class="grid" id="grid"></div>
@@ -311,16 +345,13 @@
 
 <div class="modal" id="cloudmodal">
   <div class="modal-box big">
-    <p class="modal-msg">登入</p>
-    <p class="cloud-help">輸入密碼即可操作。<b>第一次使用請先按「註冊」</b>設定密碼。登入後這台裝置會記住，下次開啟免再輸入。</p>
+    <p class="modal-msg">請輸入老師專屬密碼才能編輯：</p>
     <div class="cloud-login">
-      <input id="cloud-pw" class="fld" type="password" placeholder="密碼（至少 6 碼）" autocomplete="current-password">
+      <input id="cloud-pw" class="fld" type="password" placeholder="密碼" autocomplete="current-password">
     </div>
     <div class="modal-act">
-      <button class="m-no" id="cloud-close">關閉</button>
-      <button class="m-extra" id="cloud-signup">註冊</button>
-      <button class="m-extra" id="cloud-logout">登出</button>
-      <button class="m-ok" id="cloud-login">登入</button>
+      <button id="cloud-login">確定</button>
+      <button class="m-no" id="cloud-close">取消</button>
     </div>
   </div>
 </div>
@@ -433,6 +464,7 @@
         if(fb.unsub){try{fb.unsub();}catch(e){} fb.unsub=null;}
         if(user){
           fb.connected=true; fb.user=user;
+          document.body.classList.add('auth-in');
           const ref=fsMod.doc(fb.db,'rooms',user.uid);
           fb.write=(s)=>fsMod.setDoc(ref,s);
           fb.unsub=fsMod.onSnapshot(ref,snap=>{
@@ -444,6 +476,7 @@
           setCloudStatus('已登入 · '+user.email,'ok');
         }else{
           fb.connected=false; fb.user=null; fb.write=null;
+          document.body.classList.remove('auth-in');
           setCloudStatus('請登入','wait');
         }
       });
@@ -654,17 +687,16 @@
     const on = (typeof force==='boolean') ? force : !isDisplay();
     document.body.classList.toggle('display-mode', on);
     const b=document.getElementById('projBtn');
-    if(b) b.textContent = on ? '✕ 結束投影' : '🖥 投影模式';
+    if(b) b.textContent = on ? '✕' : '🖥 投影模式';
     render();
     window.scrollTo(0,0);
   }
   document.getElementById('projBtn').addEventListener('click',()=>toggleDisplay());
   document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&isDisplay()) toggleDisplay(false); });
-  document.getElementById('projBtn').textContent = isDisplay() ? '✕ 結束投影' : '🖥 投影模式';
+  document.getElementById('projBtn').textContent = isDisplay() ? '✕' : '🖥 投影模式';
   document.getElementById('cloud-close').addEventListener('click',closeCloud);
   document.getElementById('cloud-login').addEventListener('click',()=>cloudAuth(false));
-  document.getElementById('cloud-signup').addEventListener('click',()=>cloudAuth(true));
-  document.getElementById('cloud-logout').addEventListener('click',cloudLogout);
+  document.getElementById('logoutBtn').addEventListener('click',cloudLogout);
   document.getElementById('cloud-pw').addEventListener('keydown',e=>{if(e.key==='Enter')cloudAuth(false);});
 
   load().then(()=>{ render(); autoCloud(); });
