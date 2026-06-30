@@ -44,6 +44,7 @@
     box-shadow:var(--shadow);
   }
   .gavel{
+    cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
     font-size:40px;line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));
     transform-origin:75% 80%;transition:transform .12s;
   }
@@ -222,7 +223,6 @@
   /* ---------- 投影模式（?display=1）：唯讀看板，隱藏所有編輯控制 ---------- */
   .display-mode .addbar,
   .display-mode .hint,
-  .display-mode #projBtn,
   .display-mode #settleBtn,
   .display-mode #clearBtn{display:none!important;}
   .display-mode .top{justify-content:center;text-align:center;}
@@ -271,8 +271,7 @@
   </div>
 
   <div class="toolbar">
-    <button class="btn ghost" id="projBtn">🖥 開啟投影畫面</button>
-    <span class="cloudstat" id="cloudStat">未連線（僅存本機）</span>
+    <button class="btn ghost" id="projBtn">🖥 投影模式</button>
   </div>
 
   <div class="grid" id="grid"></div>
@@ -316,8 +315,8 @@
 (function(){
   "use strict";
   const KEY='auction-points-v1';
-  const DISPLAY = new URLSearchParams(location.search).get('display')==='1';
-  if(DISPLAY) document.body.classList.add('display-mode');
+  const isDisplay=()=>document.body.classList.contains('display-mode');
+  if(new URLSearchParams(location.search).get('display')==='1') document.body.classList.add('display-mode');
   const CFGKEY='auction-fb-cfg-v1';
   let state={students:[]};
 
@@ -553,7 +552,7 @@
     const sbBtn=document.getElementById('settleBtn'); if(sbBtn)sbBtn.disabled=totPend<=0;
     empty.style.display=state.students.length?'none':'block';
 
-    if(DISPLAY){
+    if(isDisplay()){
       grid.innerHTML=state.students.map(s=>{
         const pt=pendTotal(s); const remain=s.balance-pt; const over=remain<0;
         const sub = over ? ('超扣 '+(-remain)+' 點') : ('剩餘點數'+(pt?(' · 待扣 '+pt):''));
@@ -629,16 +628,24 @@
   document.getElementById('clearBtn').addEventListener('click',clearAll);
   // 連點標題三下 → 開啟登入密碼框（隱藏式入口）
   (function(){
-    const el=document.querySelector('.title h1'); if(!el)return;
+    const el=document.getElementById('gavel'); if(!el)return;
     let taps=0,timer=null;
     el.addEventListener('click',()=>{
       taps++; clearTimeout(timer); timer=setTimeout(()=>{taps=0;},600);
       if(taps>=3){taps=0; clearTimeout(timer); openCloud();}
     });
   })();
-  document.getElementById('projBtn').addEventListener('click',()=>{
-    window.open(location.origin+location.pathname+'?display=1','_blank');
-  });
+  function toggleDisplay(force){
+    const on = (typeof force==='boolean') ? force : !isDisplay();
+    document.body.classList.toggle('display-mode', on);
+    const b=document.getElementById('projBtn');
+    if(b) b.textContent = on ? '✕ 結束投影' : '🖥 投影模式';
+    render();
+    window.scrollTo(0,0);
+  }
+  document.getElementById('projBtn').addEventListener('click',()=>toggleDisplay());
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&isDisplay()) toggleDisplay(false); });
+  document.getElementById('projBtn').textContent = isDisplay() ? '✕ 結束投影' : '🖥 投影模式';
   document.getElementById('cloud-close').addEventListener('click',closeCloud);
   document.getElementById('cloud-login').addEventListener('click',()=>cloudAuth(false));
   document.getElementById('cloud-signup').addEventListener('click',()=>cloudAuth(true));
