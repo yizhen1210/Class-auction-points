@@ -80,7 +80,7 @@
   .addbar{
     margin:0 0 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;
     padding:12px 14px;border:1px dashed var(--line);border-radius:14px;
-    background:rgba(0,0,0,.14);width:fit-content;max-width:100%;
+    background:rgba(0,0,0,.14);
   }
   .addbar label{font-size:14px;color:#b9c2b6;}
   input,button{font-family:inherit;}
@@ -220,9 +220,9 @@
     #cloudmodal .modal-box{width:min(420px,88vw);padding:26px 22px;}
     #cloudmodal .modal-msg{font-size:min(20.8px, calc((88vw - 56px) / 15));margin:0 0 18px;}
   }
-  /* 右上角工具列：投影 + 登出，兩顆等高 */
-  .toolbar{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin:0 0 14px;}
-  .toolbar button{
+  /* 投影 + 登出：接在「新增學生」欄位後面，靠右、兩顆等高 */
+  .addbar-tools{margin-left:auto;display:flex;gap:10px;align-items:center;}
+  .addbar-tools button{
     font-family:inherit;cursor:pointer;font-size:15px;line-height:1;
     padding:9px 18px;border-radius:10px;border:1.5px solid var(--line);
     box-sizing:border-box;background:transparent;
@@ -260,24 +260,29 @@
   .hint{margin-top:14px;font-size:13px;color:#8e978b;line-height:1.7;}
 
   /* ---------- 投影模式：唯讀看板，隱藏所有編輯控制 ---------- */
-  .display-mode .addbar,
   .display-mode .hint,
   .display-mode .totals,
   .display-mode .title p,
   .display-mode #settleBtn,
   .display-mode #clearBtn{display:none!important;}
+  /* 投影模式：保留 projBtn 當退出鈕，其餘新增欄位隱藏、外框消除 */
+  .display-mode .addbar{border:none!important;background:none!important;padding:0!important;margin:0!important;}
+  .display-mode .addbar label,
+  .display-mode .addbar .fld,
+  .display-mode #addBtn,
+  .display-mode #logoutBtn{display:none!important;}
+  .display-mode .addbar-tools{margin:0;}
   .display-mode .top{justify-content:center;text-align:center;padding:16px 20px;}
   .display-mode .title h1{font-size:40px;}
-  .display-mode .toolbar{margin:0;height:0;}
-  .display-mode #logoutBtn{display:none!important;}
-  /* 結束投影：右上角圓形 ✕ */
+  /* 結束投影：右上角圓形 ✕，觸碰時亮圈 */
   .display-mode #projBtn{
     position:fixed;top:16px;right:16px;z-index:40;
-    width:46px;height:46px;padding:0;border-radius:50%;
-    font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;
-    background:rgba(0,0,0,.45);color:#eef1ea;border:1px solid var(--line);
+    width:54px;height:54px;padding:0;border-radius:50%;
+    font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;
+    background:transparent;color:#eef1ea;border:2px solid rgba(255,255,255,.4);
+    transition:background .15s,border-color .15s;
   }
-  .display-mode #projBtn:hover{background:rgba(0,0,0,.6);}
+  .display-mode #projBtn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.95);}
   .display-mode .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;}
   .card.sb{align-items:center;text-align:center;gap:6px;padding:22px 16px;}
   .sb-name{font-size:30px;font-weight:600;letter-spacing:.04em;color:var(--text);}
@@ -301,11 +306,6 @@
 <body>
 <div class="wrap">
 
-  <div class="toolbar">
-    <button class="btn ghost" id="projBtn">🖥 投影模式</button>
-    <button id="logoutBtn">登出</button>
-  </div>
-
   <header class="top">
     <div class="gavel" id="gavel">🔨</div>
     <div class="title">
@@ -325,7 +325,11 @@
     <label>起始點數</label>
     <input class="fld" id="s_init" type="number" value="100" min="0" step="1">
     <button class="btn" id="addBtn">＋ 加入</button>
-    <button class="btn ghost" id="clearBtn" style="margin-left:8px">清空全部</button>
+    <button class="btn ghost" id="clearBtn">清空全部</button>
+    <span class="addbar-tools">
+      <button class="btn ghost" id="projBtn">🖥 投影模式</button>
+      <button id="logoutBtn">登出</button>
+    </span>
   </div>
 
   <div class="grid" id="grid"></div>
