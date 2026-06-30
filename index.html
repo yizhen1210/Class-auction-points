@@ -675,13 +675,16 @@
     const b=e.target.closest('[data-act="init"]'); if(b)setInit(b.dataset.s,b.value);
   });
   document.getElementById('grid').addEventListener('keydown',e=>{
-    if(e.key!=='Enter')return;
+    if(e.key!=='Enter'||e.isComposing||e.keyCode===229)return;
     const num=e.target.closest('input[data-role="num"]');
     if(num){const card=num.closest('.card');card.querySelector('[data-act="addpend"]').click();}
   });
 
   document.getElementById('addBtn').addEventListener('click',addStudent);
-  document.getElementById('s_name').addEventListener('keydown',e=>{if(e.key==='Enter')addStudent();});
+  document.getElementById('s_name').addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||e.isComposing||e.keyCode===229)return;  // 選字中的 Enter 不算
+    addStudent();
+  });
   document.getElementById('settleBtn').addEventListener('click',settleAll);
   document.getElementById('clearBtn').addEventListener('click',clearAll);
   // 連點標題三下 → 開啟登入密碼框（隱藏式入口）
@@ -707,7 +710,7 @@
   document.getElementById('cloud-close').addEventListener('click',closeCloud);
   document.getElementById('cloud-login').addEventListener('click',()=>cloudAuth(false));
   document.getElementById('logoutBtn').addEventListener('click',cloudLogout);
-  document.getElementById('cloud-pw').addEventListener('keydown',e=>{if(e.key==='Enter')cloudAuth(false);});
+  document.getElementById('cloud-pw').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing&&e.keyCode!==229)cloudAuth(false);});
 
   load().then(()=>{ render(); autoCloud(); });
 })();
