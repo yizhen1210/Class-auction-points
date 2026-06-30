@@ -114,8 +114,11 @@
   .cinit input{
     font-family:inherit;font-size:13px;text-align:center;
     border:none;border-bottom:1px dotted #b9ad8e;background:transparent;
-    color:var(--text);outline:none;padding:0 2px;box-sizing:content-box;min-width:1ch;
+    color:var(--text);outline:none;padding:0 4px;box-sizing:content-box;min-width:2ch;
+    -moz-appearance:textfield;appearance:textfield;
   }
+  .cinit input::-webkit-outer-spin-button,
+  .cinit input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   .x-stu{
     margin-left:auto;border:none;background:transparent;cursor:pointer;
     color:#b0a585;font-size:18px;line-height:1;padding:2px 4px;border-radius:6px;
@@ -636,7 +639,7 @@
       return `<div class="card ${over?'over':''}">
         <div class="crow">
           <span class="cname">${esc(s.name)}</span>
-          <span class="cinit">起始 <input type="number" min="0" value="${s.init}" data-act="init" data-s="${s.id}" style="width:calc(${Math.max(1,String(s.init).length)}ch + 4px)"> 點</span>
+          <span class="cinit">起始 <input type="number" min="0" value="${s.init}" data-act="init" data-s="${s.id}" style="width:calc(${Math.max(1,String(s.init).length)}ch + 10px)"> 點</span>
           <button class="x-stu" data-act="rmstu" data-s="${s.id}" title="刪除學生">✕</button>
         </div>
         <div class="remain">
@@ -677,7 +680,7 @@
   });
   document.getElementById('grid').addEventListener('input',e=>{
     const b=e.target.closest('[data-act="init"]');
-    if(b) b.style.width='calc('+Math.max(1,(b.value.length||1))+'ch + 4px)';
+    if(b) b.style.width='calc('+Math.max(1,(b.value.length||1))+'ch + 10px)';
   });
   document.getElementById('grid').addEventListener('keydown',e=>{
     if(e.key!=='Enter'||e.isComposing||e.keyCode===229)return;
