@@ -214,9 +214,8 @@
   .cloudstat.wait{color:#f0d9a0;background:rgba(200,150,43,.2);}
   .cloud-help{font-size:13.5px;color:var(--muted);line-height:1.7;margin:-4px 0 12px;}
   .cloud-help b{color:var(--brass-deep);}
-  .cloud-room-row{display:flex;align-items:center;gap:10px;margin:0 0 16px;}
-  .cloud-room-row label{font-size:14px;color:var(--muted);}
-  .cloud-room-row .fld{flex:1;background:#fff;color:var(--text);border:1px solid #d9cdab;}
+  .cloud-login{display:flex;gap:10px;margin:0 0 16px;flex-wrap:wrap;}
+  .cloud-login .fld{flex:1;min-width:160px;background:#fff;color:var(--text);border:1px solid #d9cdab;}
 
   .hint{margin-top:14px;font-size:13px;color:#8e978b;line-height:1.7;}
   @media (prefers-reduced-motion:reduce){
@@ -296,20 +295,20 @@
 
 <div class="modal" id="cloudmodal">
   <div class="modal-box big">
-    <p class="modal-msg">雲端同步（Firebase）</p>
+    <p class="modal-msg">雲端同步（以老師帳號登入）</p>
     <p class="cloud-help">
-      在 Firebase 主控台建立（或沿用）專案、開啟 <b>Cloud Firestore</b> 後，把網頁 App 的設定整段貼到下面（需含 <b>apiKey</b> 與 <b>projectId</b>，不需要 databaseURL）。
-      「房號」自訂一組不易猜到的字串當密碼，<b>每台裝置輸入相同房號</b>就會同步同一份資料。
+      <b>首次在這台裝置</b>才需貼上 Firebase 設定（記在本機，之後免再貼）。日常只要用老師的 Email、密碼登入——<b>同一組帳號在任何裝置都是同一份資料，沒帳密就進不去</b>。第一次使用請先按「註冊新帳號」建立帳密。
     </p>
-    <textarea id="cloud-cfg" class="dm-text" spellcheck="false" placeholder='貼上 Firebase 設定，例如：&#10;{&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "...",&#10;  appId: "..."&#10;}'></textarea>
-    <div class="cloud-room-row">
-      <label>房號</label>
-      <input id="cloud-room" class="fld" placeholder="例如 class301-9f3k2" autocomplete="off">
+    <textarea id="cloud-cfg" class="dm-text" spellcheck="false" placeholder='首次設定才需貼，例如：&#10;{&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "...",&#10;  appId: "..."&#10;}'></textarea>
+    <div class="cloud-login">
+      <input id="cloud-email" class="fld" type="email" placeholder="老師 Email" autocomplete="username">
+      <input id="cloud-pw" class="fld" type="password" placeholder="密碼（至少 6 碼）" autocomplete="current-password">
     </div>
     <div class="modal-act">
       <button class="m-no" id="cloud-close">關閉</button>
-      <button class="m-extra" id="cloud-disc">中斷雲端</button>
-      <button class="m-ok" id="cloud-go">連線並儲存</button>
+      <button class="m-extra" id="cloud-signup">註冊新帳號</button>
+      <button class="m-extra" id="cloud-logout">登出</button>
+      <button class="m-ok" id="cloud-login">登入</button>
     </div>
   </div>
 </div>
@@ -322,7 +321,7 @@
   let state={students:[]};
 
   /* Firebase 同步狀態 */
-  let fb={connected:false, write:null, unsub:null, room:'', applying:false};
+  let fb={connected:false, write:null, unsub:null, applying:false, auth:null, authMod:null, fs:null, db:null, user:null};
 
   /* ---------- 本機保存：優先用 Claude 持久層，否則退回 localStorage（下載離線可用） ---------- */
   async function saveLocal(){
@@ -449,61 +448,93 @@
       pending:Array.isArray(s.pending)?s.pending.map(p=>({id:p.id||uid(),label:String(p.label||'競標'),points:Math.round(+p.points)||0})):[]
     }))};
   }
-  async function connectFirebase(cfg,room,seedIfEmpty){
+  // 確保 Firebase App 與 Auth 已初始化（只做一次）
+  async function ensureFb(cfg){
+    if(fb.auth) return true;
     setCloudStatus('連線中…','wait');
-    let appMod,fsMod;
+    let appMod,fsMod,authMod;
     try{
-      appMod=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-      fsMod =await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    }catch(e){setCloudStatus('載入 Firebase 失敗（請確認此頁是用網址開啟，而非本機檔案）','err');return false;}
+      appMod =await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+      fsMod  =await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      authMod=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    }catch(e){setCloudStatus('載入 Firebase 失敗（請用網址開啟，勿用本機檔案）','err');return false;}
     try{
-      if(fb.unsub){try{fb.unsub();}catch(e){}}
       const app=appMod.initializeApp(cfg, 'app_'+Date.now());
-      const db=fsMod.getFirestore(app);
-      const ref=fsMod.doc(db,'rooms',room);
-      fb.write=(s)=>fsMod.setDoc(ref,s);
-      fb.unsub=fsMod.onSnapshot(ref,snap=>{
-        if(snap.exists()){
-          fb.applying=true; state=normalize(snap.data()); saveLocal(); render(); fb.applying=false;
-          setCloudStatus('已連線 · 房號「'+room+'」','ok');
+      fb.fs=fsMod; fb.authMod=authMod;
+      fb.db=fsMod.getFirestore(app);
+      fb.auth=authMod.getAuth(app);
+      localStorage.setItem(CFGKEY,JSON.stringify({cfg}));
+      // 登入狀態改變時，自動訂閱／取消該帳號的資料
+      authMod.onAuthStateChanged(fb.auth, user=>{
+        if(fb.unsub){try{fb.unsub();}catch(e){} fb.unsub=null;}
+        if(user){
+          fb.connected=true; fb.user=user;
+          const ref=fsMod.doc(fb.db,'rooms',user.uid);
+          fb.write=(s)=>fsMod.setDoc(ref,s);
+          fb.unsub=fsMod.onSnapshot(ref,snap=>{
+            if(snap.exists()){
+              fb.applying=true; state=normalize(snap.data()); saveLocal(); render(); fb.applying=false;
+            }else{ try{fb.write(state);}catch(e){} }  // 首次：把本機名單上傳
+            setCloudStatus('已登入 · '+user.email,'ok');
+          }, err=>setCloudStatus('讀取被拒：請檢查 Firestore 安全規則','err'));
+          setCloudStatus('已登入 · '+user.email,'ok');
         }else{
-          if(seedIfEmpty){try{fb.write(state);}catch(e){}}
-          setCloudStatus('已連線 · 房號「'+room+'」（雲端空白，已上傳目前名單）','ok');
+          fb.connected=false; fb.user=null; fb.write=null;
+          setCloudStatus('已設定，請登入','wait');
         }
-      },err=>{ setCloudStatus('連線被拒：請檢查 Firestore 安全規則','err'); });
-      fb.connected=true; fb.room=room;
-      localStorage.setItem(CFGKEY,JSON.stringify({cfg,room}));
+      });
       return true;
-    }catch(e){ setCloudStatus('連線失敗：'+(e&&e.message||e),'err'); return false; }
+    }catch(e){ setCloudStatus('初始化失敗：'+(e&&e.message||e),'err'); return false; }
   }
-  function disconnectFirebase(){
-    if(fb.unsub){try{fb.unsub();}catch(e){}}
-    fb={connected:false,write:null,unsub:null,room:'',applying:false};
-    try{localStorage.removeItem(CFGKEY);}catch(e){}
-    setCloudStatus('未連線（僅存本機）','');
+  function readCfgField(){
+    const raw=document.getElementById('cloud-cfg').value.trim();
+    if(raw){const c=parseFbConfig(raw); if(c.apiKey&&c.projectId) return c;}
+    let saved=null; try{saved=JSON.parse(localStorage.getItem(CFGKEY));}catch(e){}
+    return saved&&saved.cfg?saved.cfg:null;
+  }
+  function authErrMsg(e){
+    const c=(e&&e.code)||'';
+    if(c.includes('invalid-credential')||c.includes('wrong-password')||c.includes('user-not-found')) return '帳號或密碼錯誤。第一次使用請先按「註冊新帳號」。';
+    if(c.includes('email-already-in-use')) return '這個 Email 已註冊過，請直接「登入」。';
+    if(c.includes('weak-password')) return '密碼太短，請至少 6 碼。';
+    if(c.includes('invalid-email')) return 'Email 格式不正確。';
+    if(c.includes('operation-not-allowed')) return 'Firebase 尚未啟用 Email/密碼登入方式（請到 Authentication → Sign-in method 開啟）。';
+    return '操作失敗：'+(e&&e.message||c||e);
+  }
+  async function cloudAuth(isSignup){
+    const cfg=readCfgField();
+    if(!cfg){await ask('首次使用請先貼上 Firebase 設定（需含 apiKey 與 projectId）。');return;}
+    const email=document.getElementById('cloud-email').value.trim();
+    const pw=document.getElementById('cloud-pw').value;
+    if(!email||!pw){await ask('請輸入 Email 與密碼。');return;}
+    if(!(await ensureFb(cfg)))return;
+    setCloudStatus(isSignup?'註冊中…':'登入中…','wait');
+    try{
+      if(isSignup) await fb.authMod.createUserWithEmailAndPassword(fb.auth,email,pw);
+      else         await fb.authMod.signInWithEmailAndPassword(fb.auth,email,pw);
+      document.getElementById('cloud-pw').value='';
+      closeCloud();
+    }catch(e){ await ask(authErrMsg(e)); setCloudStatus('已設定，請登入','wait'); }
+  }
+  async function cloudLogout(){
+    if(fb.auth&&fb.authMod){ try{await fb.authMod.signOut(fb.auth);}catch(e){} }
+    if(fb.unsub){try{fb.unsub();}catch(e){} fb.unsub=null;}
+    fb.connected=false; fb.user=null; fb.write=null;
+    setCloudStatus('已登出（僅存本機）','');
+    closeCloud();
   }
   function openCloud(){
     let saved={}; try{saved=JSON.parse(localStorage.getItem(CFGKEY))||{};}catch(e){}
-    document.getElementById('cloud-cfg').value=saved.cfg?JSON.stringify(saved.cfg,null,2):'';
-    document.getElementById('cloud-room').value=saved.room||'';
+    const ta=document.getElementById('cloud-cfg');
+    ta.value=saved.cfg?JSON.stringify(saved.cfg,null,2):'';
+    document.getElementById('cloud-email').value=(fb.user&&fb.user.email)||'';
+    document.getElementById('cloud-pw').value='';
     document.getElementById('cloudmodal').classList.add('show');
   }
   const closeCloud=()=>document.getElementById('cloudmodal').classList.remove('show');
-  async function doCloudConnect(){
-    const raw=document.getElementById('cloud-cfg').value.trim();
-    const room=document.getElementById('cloud-room').value.trim();
-    if(!room){await ask('請設定一個「房號」（各裝置要輸入相同房號才會同步）。');return;}
-    const cfg=parseFbConfig(raw);
-    if(!cfg.apiKey||!cfg.projectId){
-      await ask('設定不完整：至少需要 apiKey 與 projectId。請貼上 Firebase 網頁 App 的完整設定。');return;
-    }
-    closeCloud();
-    const ok=await connectFirebase(cfg,room,true);
-    if(ok)commit();
-  }
   async function autoCloud(){
     let saved=null; try{saved=JSON.parse(localStorage.getItem(CFGKEY));}catch(e){}
-    if(saved&&saved.cfg&&saved.room){ await connectFirebase(saved.cfg,saved.room,false); }
+    if(saved&&saved.cfg){ await ensureFb(saved.cfg); }   // Auth 會自動還原先前登入
     else setCloudStatus('未連線（僅存本機）','');
   }
   const pendTotal=s=>s.pending.reduce((a,p)=>a+(+p.points||0),0);
@@ -642,8 +673,10 @@
   });
   document.getElementById('cloudBtn').addEventListener('click',openCloud);
   document.getElementById('cloud-close').addEventListener('click',closeCloud);
-  document.getElementById('cloud-go').addEventListener('click',doCloudConnect);
-  document.getElementById('cloud-disc').addEventListener('click',()=>{disconnectFirebase();closeCloud();});
+  document.getElementById('cloud-login').addEventListener('click',()=>cloudAuth(false));
+  document.getElementById('cloud-signup').addEventListener('click',()=>cloudAuth(true));
+  document.getElementById('cloud-logout').addEventListener('click',cloudLogout);
+  document.getElementById('cloud-pw').addEventListener('keydown',e=>{if(e.key==='Enter')cloudAuth(false);});
 
   load().then(()=>{ render(); autoCloud(); });
 })();
