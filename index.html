@@ -158,8 +158,8 @@
   }
   .chip:hover{background:#fdf3d8;border-color:var(--brass);} .chip:active{transform:scale(.94);}
   .addline{display:flex;gap:6px;}
-  .addline input.lab{flex:1;min-width:0;border:1px solid #d9cdab;border-radius:8px;padding:7px 9px;font-size:15px;background:#fff;color:var(--text);outline:none;}
-  .addline input.num{width:64px;border:1px solid #d9cdab;border-radius:8px;padding:7px 8px;font-size:15px;text-align:right;background:#fff;color:var(--text);outline:none;}
+  .addline input.lab{flex:2 1 0;min-width:0;border:1px solid #d9cdab;border-radius:8px;padding:7px 9px;font-size:15px;background:#fff;color:var(--text);outline:none;}
+  .addline input.num{flex:3 1 0;min-width:0;width:auto;border:1px solid #d9cdab;border-radius:8px;padding:7px 8px;font-size:15px;text-align:right;background:#fff;color:var(--text);outline:none;}
   .addline input:focus{border-color:var(--brass);}
   .addline button{cursor:pointer;border:none;border-radius:8px;background:var(--red);color:#fff;padding:7px 12px;font-size:15px;font-family:inherit;}
   .addline button:active{transform:translateY(1px);}
@@ -347,6 +347,8 @@
     .grid{grid-template-columns:minmax(0,1fr);}
     .cname{font-size:20px;}
     #touchBanner{font-size:20px;padding:10px 18px;top:12px;max-width:92vw;text-align:center;}
+    /* 字級 ≥16px：避免 iOS 點輸入框時自動放大頁面 */
+    .addline input.lab,.addline input.num,.cinit input{font-size:16px;}
     .display-mode .title h1{font-size:30px;}
     .display-mode .sb-remain{font-size:52px;}
   }
