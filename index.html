@@ -78,9 +78,9 @@
 
   /* ---------- 新增學生列 ---------- */
   .addbar{
-    margin:18px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;
-    padding:14px 16px;border:1px dashed var(--line);border-radius:14px;
-    background:rgba(0,0,0,.14);
+    margin:0 0 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+    padding:12px 14px;border:1px dashed var(--line);border-radius:14px;
+    background:rgba(0,0,0,.14);width:fit-content;max-width:100%;
   }
   .addbar label{font-size:14px;color:#b9c2b6;}
   input,button{font-family:inherit;}
@@ -89,8 +89,8 @@
     border-radius:9px;padding:9px 12px;font-size:16px;outline:none;
   }
   .fld:focus{border-color:var(--brass);box-shadow:0 0 0 3px rgba(200,150,43,.22);}
-  #s_name{width:180px;}
-  #s_init{width:108px;}
+  #s_name{width:150px;}
+  #s_init{width:92px;}
   .btn{
     cursor:pointer;border:1px solid var(--line);border-radius:9px;
     padding:9px 16px;font-size:16px;color:#1c2420;background:var(--paper);
@@ -220,18 +220,26 @@
     #cloudmodal .modal-box{width:min(420px,88vw);padding:26px 22px;}
     #cloudmodal .modal-msg{font-size:min(20.8px, calc((88vw - 56px) / 15));margin:0 0 18px;}
   }
-  /* 編輯模式的紅色登出鈕（含 hover），未登入時隱藏 */
-  #logoutBtn{display:none;background:var(--red);color:#fff;border:none;border-radius:11px;
-    padding:12px 22px;font-size:16px;font-family:inherit;cursor:pointer;transition:filter .12s,transform .06s;}
-  #logoutBtn:hover{filter:brightness(1.1);}
-  #logoutBtn:active{transform:translateY(1px);}
-  body.auth-in #logoutBtn{display:inline-block;}
+  /* 右上角工具列：投影 + 登出，兩顆等高 */
+  .toolbar{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin:0 0 14px;}
+  .toolbar button{
+    font-family:inherit;cursor:pointer;font-size:15px;line-height:1;
+    padding:9px 18px;border-radius:10px;border:1.5px solid var(--line);
+    box-sizing:border-box;background:transparent;
+    transition:background .12s,filter .12s,transform .06s;
+  }
+  #projBtn{color:#dfe5db;}
+  #projBtn:hover{background:rgba(255,255,255,.06);}
+  /* 登出：平常無底色，觸碰才上紅底 */
+  #logoutBtn{display:none;color:#e2a294;border-color:rgba(181,64,47,.55);}
+  body.auth-in #logoutBtn{display:inline-flex;align-items:center;}
+  #logoutBtn:hover{background:var(--red);color:#fff;border-color:var(--red);}
+  #projBtn:active,#logoutBtn:active{transform:translateY(1px);}
   /* 未登入時不顯示「新增學生」欄位 */
   body:not(.auth-in) .addbar{display:none!important;}
   #modal{z-index:70;}                 /* 確認框永遠蓋在資料視窗之上 */
   .m-extra{background:transparent;border:1px solid var(--brass);color:var(--brass-deep);}
   .m-extra:active{transform:translateY(1px);}
-  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:-4px 0 18px;}
   .modal-box.big{max-width:520px;}
   .dm-text{
     width:100%;height:200px;resize:vertical;box-sizing:border-box;
@@ -250,9 +258,6 @@
   .cloud-login .fld{flex:1;min-width:160px;background:#fff;color:var(--text);border:1px solid #d9cdab;}
 
   .hint{margin-top:14px;font-size:13px;color:#8e978b;line-height:1.7;}
-
-  /* 投影切換鈕（一般模式）放大、明顯 */
-  #projBtn{font-size:17px;padding:12px 24px;border-radius:12px;}
 
   /* ---------- 投影模式：唯讀看板，隱藏所有編輯控制 ---------- */
   .display-mode .addbar,
@@ -286,6 +291,7 @@
   @media (max-width:560px){
     .totals{margin-left:0;width:100%;}
     .settle{width:100%;}
+    .addbar{width:auto;}
     #s_name{width:100%;}
   }
   ::-webkit-scrollbar{width:8px;height:8px;}
@@ -294,6 +300,11 @@
 </head>
 <body>
 <div class="wrap">
+
+  <div class="toolbar">
+    <button class="btn ghost" id="projBtn">🖥 投影模式</button>
+    <button id="logoutBtn">登出</button>
+  </div>
 
   <header class="top">
     <div class="gavel" id="gavel">🔨</div>
@@ -314,12 +325,7 @@
     <label>起始點數</label>
     <input class="fld" id="s_init" type="number" value="100" min="0" step="1">
     <button class="btn" id="addBtn">＋ 加入</button>
-    <button class="btn ghost" id="clearBtn" style="margin-left:auto">清空全部</button>
-  </div>
-
-  <div class="toolbar">
-    <button class="btn ghost" id="projBtn">🖥 投影模式</button>
-    <button id="logoutBtn">登出</button>
+    <button class="btn ghost" id="clearBtn" style="margin-left:8px">清空全部</button>
   </div>
 
   <div class="grid" id="grid"></div>
