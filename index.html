@@ -220,12 +220,26 @@
 
   .hint{margin-top:14px;font-size:13px;color:#8e978b;line-height:1.7;}
 
-  /* ---------- 投影模式（?display=1）：唯讀看板，隱藏所有編輯控制 ---------- */
+  /* 投影切換鈕（一般模式）放大、明顯 */
+  #projBtn{font-size:17px;padding:12px 24px;border-radius:12px;}
+
+  /* ---------- 投影模式：唯讀看板，隱藏所有編輯控制 ---------- */
   .display-mode .addbar,
   .display-mode .hint,
+  .display-mode .totals,
+  .display-mode .title p,
   .display-mode #settleBtn,
   .display-mode #clearBtn{display:none!important;}
-  .display-mode .top{justify-content:center;text-align:center;}
+  .display-mode .top{justify-content:center;text-align:center;padding:16px 20px;}
+  .display-mode .title h1{font-size:40px;}
+  .display-mode .toolbar{margin:0;height:0;}
+  /* 結束投影：固定右上角，永不重疊標題 */
+  .display-mode #projBtn{
+    position:fixed;top:16px;right:16px;z-index:40;
+    font-size:16px;padding:10px 18px;
+    background:rgba(0,0,0,.4);color:#eef1ea;border:1px solid var(--line);
+  }
+  .display-mode #projBtn:hover{background:rgba(0,0,0,.55);}
   .display-mode .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;}
   .card.sb{align-items:center;text-align:center;gap:6px;padding:22px 16px;}
   .sb-name{font-size:30px;font-weight:600;letter-spacing:.04em;color:var(--text);}
@@ -492,7 +506,8 @@
   const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
   /* ---------- 操作 ---------- */
-  function addStudent(){
+  async function addStudent(){
+    if(!fb.user){ await ask('請先登入才能新增學生（連點左上角的槌子三下即可登入）。'); openCloud(); return; }
     const n=document.getElementById('s_name');
     const i=document.getElementById('s_init');
     const name=n.value.trim(); if(!name)return n.focus();
