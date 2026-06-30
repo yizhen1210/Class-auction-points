@@ -296,7 +296,7 @@
 <div class="modal" id="cloudmodal">
   <div class="modal-box big">
     <p class="modal-msg">雲端同步（以老師帳號登入）</p>
-    <p class="cloud-help">
+    <p class="cloud-help" id="cloud-help">
       <b>首次在這台裝置</b>才需貼上 Firebase 設定（記在本機，之後免再貼）。日常只要用老師的 Email、密碼登入——<b>同一組帳號在任何裝置都是同一份資料，沒帳密就進不去</b>。第一次使用請先按「註冊新帳號」建立帳密。
     </p>
     <textarea id="cloud-cfg" class="dm-text" spellcheck="false" placeholder='首次設定才需貼，例如：&#10;{&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "...",&#10;  appId: "..."&#10;}'></textarea>
@@ -322,6 +322,24 @@
 
   /* Firebase 同步狀態 */
   let fb={connected:false, write:null, unsub:null, applying:false, auth:null, authMod:null, fs:null, db:null, user:null};
+
+  /* ╔══════════════════════════════════════════════════════════════╗
+     ║  老師只需在這裡填「一次」Firebase 設定（從 Firebase 主控台複製）。 ║
+     ║  填好之後：任何裝置打開網址都「只要登入」，不必再貼設定。          ║
+     ║  全部留空 → 退回「每台裝置首次自行貼上設定」模式。               ║
+     ║  註：這些值不是密碼、可公開，真正的關卡是 Email／密碼登入。        ║
+     ╚══════════════════════════════════════════════════════════════╝ */
+  const EMBEDDED_CONFIG = {
+    apiKey:            "AIzaSyDhgv_lF_um7h9PpPDvkAeQJ0rh4LqAf04",
+    authDomain:        "class-auctionpoints.firebaseapp.com",
+    projectId:         "class-auctionpoints",
+    storageBucket:     "class-auctionpoints.firebasestorage.app",
+    messagingSenderId: "342735692591",
+    appId:             "1:342735692591:web:960cab300c02eeecbd37da"
+  };
+  function embeddedCfg(){
+    return (EMBEDDED_CONFIG.apiKey && EMBEDDED_CONFIG.projectId) ? EMBEDDED_CONFIG : null;
+  }
 
   /* ---------- 本機保存：優先用 Claude 持久層，否則退回 localStorage（下載離線可用） ---------- */
   async function saveLocal(){
@@ -487,6 +505,7 @@
     }catch(e){ setCloudStatus('初始化失敗：'+(e&&e.message||e),'err'); return false; }
   }
   function readCfgField(){
+    const emb=embeddedCfg(); if(emb) return emb;
     const raw=document.getElementById('cloud-cfg').value.trim();
     if(raw){const c=parseFbConfig(raw); if(c.apiKey&&c.projectId) return c;}
     let saved=null; try{saved=JSON.parse(localStorage.getItem(CFGKEY));}catch(e){}
@@ -524,17 +543,28 @@
     closeCloud();
   }
   function openCloud(){
-    let saved={}; try{saved=JSON.parse(localStorage.getItem(CFGKEY))||{};}catch(e){}
+    const emb=embeddedCfg();
     const ta=document.getElementById('cloud-cfg');
-    ta.value=saved.cfg?JSON.stringify(saved.cfg,null,2):'';
+    const help=document.getElementById('cloud-help');
+    if(emb){
+      ta.style.display='none';
+      help.innerHTML='用老師的 Email、密碼登入即可——<b>任何裝置打開這個網址都只要登入</b>，看到同一份資料，沒帳密就進不去。第一次使用請先按「註冊新帳號」。';
+    }else{
+      ta.style.display='';
+      let saved={}; try{saved=JSON.parse(localStorage.getItem(CFGKEY))||{};}catch(e){}
+      ta.value=saved.cfg?JSON.stringify(saved.cfg,null,2):'';
+      help.innerHTML='<b>首次在這台裝置</b>才需貼上 Firebase 設定（記在本機，之後免再貼）。日常只要用老師的 Email、密碼登入——<b>同一組帳號在任何裝置都是同一份資料，沒帳密就進不去</b>。第一次使用請先按「註冊新帳號」。';
+    }
     document.getElementById('cloud-email').value=(fb.user&&fb.user.email)||'';
     document.getElementById('cloud-pw').value='';
     document.getElementById('cloudmodal').classList.add('show');
   }
   const closeCloud=()=>document.getElementById('cloudmodal').classList.remove('show');
   async function autoCloud(){
+    const emb=embeddedCfg();
+    if(emb){ await ensureFb(emb); return; }
     let saved=null; try{saved=JSON.parse(localStorage.getItem(CFGKEY));}catch(e){}
-    if(saved&&saved.cfg){ await ensureFb(saved.cfg); }   // Auth 會自動還原先前登入
+    if(saved&&saved.cfg){ await ensureFb(saved.cfg); }
     else setCloudStatus('未連線（僅存本機）','');
   }
   const pendTotal=s=>s.pending.reduce((a,p)=>a+(+p.points||0),0);
