@@ -45,6 +45,7 @@
   }
   .gavel{
     cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
     font-size:40px;line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));
     transform-origin:75% 80%;transition:transform .12s;
   }
@@ -754,14 +755,17 @@
   });
   document.getElementById('settleBtn').addEventListener('click',settleAll);
   document.getElementById('clearBtn').addEventListener('click',clearAll);
-  // 連點標題三下 → 開啟登入密碼框（隱藏式入口）
+  // 連點槌子三下 → 開啟登入密碼框（隱藏式入口）。用 pointerup 以支援觸控
   (function(){
     const el=document.getElementById('gavel'); if(!el)return;
     let taps=0,timer=null;
-    el.addEventListener('click',()=>{
-      taps++; clearTimeout(timer); timer=setTimeout(()=>{taps=0;},600);
+    const hit=e=>{
+      if(e){e.preventDefault();}
+      taps++; clearTimeout(timer); timer=setTimeout(()=>{taps=0;},800);
       if(taps>=3){taps=0; clearTimeout(timer); openCloud();}
-    });
+    };
+    if(window.PointerEvent){ el.addEventListener('pointerup',hit); }
+    else { el.addEventListener('touchend',hit); el.addEventListener('click',hit); }
   })();
   function toggleDisplay(force){
     const on = (typeof force==='boolean') ? force : !isDisplay();
