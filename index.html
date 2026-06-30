@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拍賣會記點檯</title>
+<style>
+  @import url('https://cdn.jsdelivr.net/npm/@fontsource/iansui@5.2.8/index.css');
+
+  :root{
+    --ink:#1c2420;          /* 檯面底色：墨綠近黑，像拍賣場絨布 */
+    --ink-2:#243029;
+    --paper:#fbf6ea;        /* 卡片紙面 */
+    --paper-edge:#ece2cc;
+    --brass:#c8962b;        /* 槌金 */
+    --brass-deep:#9a6f17;
+    --red:#b5402f;          /* 扣點 / 超扣 */
+    --green:#2f7d5b;        /* 安全餘額 */
+    --text:#262b27;
+    --muted:#6c726a;
+    --line:rgba(255,255,255,.10);
+    --shadow:0 14px 30px -16px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Iansui','Klee One',system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+    color:#eef1ea;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #2c3a31 0%, var(--ink) 55%, #161d18 100%);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    letter-spacing:.01em;
+  }
+
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 18px 80px;}
+
+  /* ---------- 抬頭 ---------- */
+  header.top{
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    padding:18px 20px;border:1px solid var(--line);border-radius:18px;
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.10));
+    box-shadow:var(--shadow);
+  }
+  .gavel{
+    font-size:40px;line-height:1;filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));
+    transform-origin:75% 80%;transition:transform .12s;
+  }
+  .gavel.bang{animation:bang .5s ease;}
+  @keyframes bang{
+    0%{transform:rotate(0)} 28%{transform:rotate(-34deg)}
+    46%{transform:rotate(6deg)} 60%{transform:rotate(-12deg)}
+    100%{transform:rotate(0)}
+  }
+  .title h1{margin:0;font-size:30px;letter-spacing:.04em;}
+  .title p{margin:3px 0 0;color:#b9c2b6;font-size:15px;}
+
+  .totals{margin-left:auto;display:flex;gap:14px;flex-wrap:wrap;}
+  .stat{
+    text-align:center;padding:8px 16px;border-radius:12px;
+    background:rgba(0,0,0,.22);border:1px solid var(--line);min-width:96px;
+  }
+  .stat .n{font-size:26px;color:var(--brass);}
+  .stat .l{font-size:13px;color:#aab2a6;margin-top:2px;}
+
+  .settle{
+    font-family:inherit;cursor:pointer;border:none;
+    padding:13px 22px;border-radius:13px;font-size:18px;letter-spacing:.06em;
+    color:#2a1d05;background:linear-gradient(180deg,#e9bb55,var(--brass));
+    box-shadow:0 6px 0 var(--brass-deep), 0 12px 20px -8px rgba(0,0,0,.6);
+    transition:transform .08s, box-shadow .08s;
+  }
+  .settle:hover{filter:brightness(1.04);}
+  .settle:active{transform:translateY(4px);box-shadow:0 2px 0 var(--brass-deep);}
+  .settle:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4);}
+
+  /* ---------- 新增學生列 ---------- */
+  .addbar{
+    margin:18px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+    padding:14px 16px;border:1px dashed var(--line);border-radius:14px;
+    background:rgba(0,0,0,.14);
+  }
+  .addbar label{font-size:14px;color:#b9c2b6;}
+  input,button{font-family:inherit;}
+  .fld{
+    background:#10160f;border:1px solid rgba(255,255,255,.14);color:#f3f6ef;
+    border-radius:9px;padding:9px 12px;font-size:16px;outline:none;
+  }
+  .fld:focus{border-color:var(--brass);box-shadow:0 0 0 3px rgba(200,150,43,.22);}
+  #s_name{width:180px;}
+  #s_init{width:108px;}
+  .btn{
+    cursor:pointer;border:1px solid var(--line);border-radius:9px;
+    padding:9px 16px;font-size:16px;color:#1c2420;background:var(--paper);
+    transition:transform .06s;
+  }
+  .btn:hover{filter:brightness(1.05);} .btn:active{transform:translateY(1px);}
+  .btn.ghost{background:transparent;color:#dfe5db;border-color:var(--line);}
+
+  /* ---------- 學生卡 ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;}
+  .card{
+    background:linear-gradient(180deg,var(--paper),#f4ecda);
+    color:var(--text);border-radius:16px;padding:16px 16px 14px;
+    box-shadow:var(--shadow);border-top:4px solid var(--brass);
+    position:relative;display:flex;flex-direction:column;gap:11px;
+  }
+  .card.over{border-top-color:var(--red);}
+  .crow{display:flex;align-items:baseline;gap:8px;}
+  .cname{font-size:22px;font-weight:600;letter-spacing:.03em;}
+  .cinit{font-size:13px;color:var(--muted);}
+  .cinit input{
+    width:60px;font-family:inherit;font-size:13px;text-align:right;
+    border:none;border-bottom:1px dotted #b9ad8e;background:transparent;
+    color:var(--text);outline:none;
+  }
+  .x-stu{
+    margin-left:auto;border:none;background:transparent;cursor:pointer;
+    color:#b0a585;font-size:18px;line-height:1;padding:2px 4px;border-radius:6px;
+  }
+  .x-stu:hover{color:var(--red);background:rgba(181,64,47,.10);}
+
+  .remain{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    padding:8px 12px;border-radius:11px;background:rgba(47,125,91,.10);
+    border:1px solid rgba(47,125,91,.28);
+  }
+  .card.over .remain{background:rgba(181,64,47,.10);border-color:rgba(181,64,47,.32);}
+  .remain .big{font-size:34px;line-height:1;color:var(--green);}
+  .card.over .remain .big{color:var(--red);}
+  .remain .lab{font-size:13px;color:var(--muted);text-align:right;}
+  .remain .lab b{display:block;font-size:18px;color:var(--red);}
+
+  /* 待扣清單 */
+  .pend{display:flex;flex-direction:column;gap:5px;max-height:152px;overflow:auto;}
+  .pend:empty::after{content:"尚無待扣項目";color:var(--muted);font-size:14px;padding:4px 2px;}
+  .pitem{
+    display:flex;align-items:center;gap:8px;font-size:15px;
+    padding:5px 8px;border-radius:8px;background:rgba(0,0,0,.04);
+  }
+  .pitem .plab{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pitem .pval{color:var(--red);font-variant-numeric:tabular-nums;}
+  .pitem .x{cursor:pointer;border:none;background:transparent;color:#b0a585;font-size:15px;padding:0 2px;}
+  .pitem .x:hover{color:var(--red);}
+
+  /* 快速加扣 */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;}
+  .chip{
+    cursor:pointer;border:1px solid #d9cdab;background:#fff;color:var(--text);
+    border-radius:999px;padding:5px 12px;font-size:15px;font-family:inherit;
+    font-variant-numeric:tabular-nums;transition:transform .05s;
+  }
+  .chip:hover{background:#fdf3d8;border-color:var(--brass);} .chip:active{transform:scale(.94);}
+  .addline{display:flex;gap:6px;}
+  .addline input.lab{flex:1;min-width:0;border:1px solid #d9cdab;border-radius:8px;padding:7px 9px;font-size:15px;background:#fff;color:var(--text);outline:none;}
+  .addline input.num{width:64px;border:1px solid #d9cdab;border-radius:8px;padding:7px 8px;font-size:15px;text-align:right;background:#fff;color:var(--text);outline:none;}
+  .addline input:focus{border-color:var(--brass);}
+  .addline button{cursor:pointer;border:none;border-radius:8px;background:var(--red);color:#fff;padding:7px 12px;font-size:15px;font-family:inherit;}
+  .addline button:active{transform:translateY(1px);}
+
+  .cfoot{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted);border-top:1px dotted #d9cdab;padding-top:8px;}
+  .cfoot b{color:var(--brass-deep);font-size:15px;}
+
+  .empty{
+    text-align:center;color:#9aa399;padding:60px 20px;font-size:17px;
+    border:1px dashed var(--line);border-radius:16px;
+  }
+
+  /* 結算戳印 */
+  .stamp{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    pointer-events:none;z-index:50;
+  }
+  .stamp span{
+    font-size:64px;color:var(--red);border:6px solid var(--red);
+    padding:10px 34px;border-radius:14px;transform:rotate(-12deg) scale(.6);
+    opacity:0;letter-spacing:.1em;background:rgba(251,246,234,.92);
+    box-shadow:0 20px 50px -12px rgba(0,0,0,.6);
+  }
+  .stamp.show span{animation:stamp 1s ease forwards;}
+  @keyframes stamp{
+    0%{opacity:0;transform:rotate(-12deg) scale(.5)}
+    20%{opacity:1;transform:rotate(-12deg) scale(1.08)}
+    35%{transform:rotate(-12deg) scale(1)}
+    80%{opacity:1} 100%{opacity:0;transform:rotate(-12deg) scale(1)}
+  }
+
+  /* 自訂確認視窗（沙箱內無法用原生 confirm） */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(10,14,11,.6);z-index:60;padding:20px;}
+  .modal.show{display:flex;}
+  .modal-box{background:var(--paper);color:var(--text);border-radius:16px;padding:22px 22px 16px;max-width:360px;width:100%;box-shadow:var(--shadow);border-top:4px solid var(--brass);}
+  .modal-msg{margin:0 0 18px;font-size:17px;line-height:1.6;}
+  .modal-act{display:flex;gap:10px;justify-content:flex-end;}
+  .modal-act button{font-family:inherit;cursor:pointer;border-radius:9px;padding:9px 18px;font-size:16px;border:none;}
+  .m-no{background:transparent;border:1px solid #d2c6a4;color:var(--muted);}
+  .m-ok{background:var(--red);color:#fff;}
+  .m-ok:active,.m-no:active{transform:translateY(1px);}
+  #modal{z-index:70;}                 /* 確認框永遠蓋在資料視窗之上 */
+  .m-extra{background:transparent;border:1px solid var(--brass);color:var(--brass-deep);}
+  .m-extra:active{transform:translateY(1px);}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:-4px 0 18px;}
+  .modal-box.big{max-width:520px;}
+  .dm-text{
+    width:100%;height:200px;resize:vertical;box-sizing:border-box;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.5;
+    border:1px solid #d9cdab;border-radius:10px;padding:10px;background:#fff;
+    color:var(--text);outline:none;margin-bottom:16px;
+  }
+  .dm-text:focus{border-color:var(--brass);}
+  .cloudstat{align-self:center;font-size:13px;color:#9aa399;padding:4px 10px;border-radius:999px;background:rgba(0,0,0,.18);}
+  .cloudstat.ok{color:#bfe6cf;background:rgba(47,125,91,.22);}
+  .cloudstat.err{color:#f2c2b8;background:rgba(181,64,47,.22);}
+  .cloudstat.wait{color:#f0d9a0;background:rgba(200,150,43,.2);}
+  .cloud-help{font-size:13.5px;color:var(--muted);line-height:1.7;margin:-4px 0 12px;}
+  .cloud-help b{color:var(--brass-deep);}
+  .cloud-room-row{display:flex;align-items:center;gap:10px;margin:0 0 16px;}
+  .cloud-room-row label{font-size:14px;color:var(--muted);}
+  .cloud-room-row .fld{flex:1;background:#fff;color:var(--text);border:1px solid #d9cdab;}
+
+  .hint{margin-top:14px;font-size:13px;color:#8e978b;line-height:1.7;}
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;}
+  }
+  @media (max-width:560px){
+    .totals{margin-left:0;width:100%;}
+    .settle{width:100%;}
+    #s_name{width:100%;}
+  }
+  ::-webkit-scrollbar{width:8px;height:8px;}
+  ::-webkit-scrollbar-thumb{background:rgba(0,0,0,.18);border-radius:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="gavel" id="gavel">🔨</div>
+    <div class="title">
+      <h1>拍賣會記點檯</h1>
+      <p>喊價當下即時記錄、即時顯示剩餘點數，全部喊完再一鍵結算扣除。</p>
+    </div>
+    <div class="totals">
+      <div class="stat"><div class="n" id="t_pend">0</div><div class="l">本場待扣總點</div></div>
+      <div class="stat"><div class="n" id="t_stu">0</div><div class="l">學生人數</div></div>
+      <button class="settle" id="settleBtn">⚖️ 結算扣點</button>
+    </div>
+  </header>
+
+  <div class="addbar">
+    <label>新增學生</label>
+    <input class="fld" id="s_name" placeholder="姓名 / 組別" maxlength="20">
+    <label>起始點數</label>
+    <input class="fld" id="s_init" type="number" value="100" min="0" step="1">
+    <button class="btn" id="addBtn">＋ 加入</button>
+    <button class="btn ghost" id="clearBtn" style="margin-left:auto">清空全部</button>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn ghost" id="expJson">⬇ 匯出存檔（JSON）</button>
+    <button class="btn ghost" id="expCsv">⬇ 匯出名單（CSV）</button>
+    <button class="btn ghost" id="impBtn">⬆ 匯入存檔</button>
+    <button class="btn ghost" id="cloudBtn">☁ 雲端同步</button>
+    <span class="cloudstat" id="cloudStat">未連線（僅存本機）</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty">還沒有學生。先在上面加入名單，拍賣開始後就能即時記點了。</div>
+
+  <p class="hint">
+    說明：每筆「待扣」會即時從起始點數預估剩餘，<b style="color:#d8b25a">紅字代表已超扣</b>（喊價超過手上點數），可當場提醒學生。
+    這些點數<b style="color:#d8b25a">不會立刻扣掉</b>，要等你按下「結算扣點」才一次正式扣除並更新餘額。資料會自動保存於本機；要長期保存或換裝置，請用上方<b style="color:#d8b25a">匯出存檔（JSON）</b>備份、再用<b style="color:#d8b25a">匯入存檔</b>還原。CSV 則供 Excel 檢視名單。
+  </p>
+</div>
+
+<div class="stamp" id="stamp"><span>結算完成</span></div>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <p class="modal-msg" id="modal-msg"></p>
+    <div class="modal-act">
+      <button class="m-no" id="modal-no">取消</button>
+      <button class="m-ok" id="modal-ok">確定</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="datamodal">
+  <div class="modal-box big">
+    <p class="modal-msg" id="dm-title"></p>
+    <textarea id="dm-text" class="dm-text" spellcheck="false"></textarea>
+    <input type="file" id="dm-file" accept=".json,application/json" hidden>
+    <div class="modal-act" id="dm-act"></div>
+  </div>
+</div>
+
+<div class="modal" id="cloudmodal">
+  <div class="modal-box big">
+    <p class="modal-msg">雲端同步（Firebase）</p>
+    <p class="cloud-help">
+      在 Firebase 主控台建立（或沿用）專案、開啟 <b>Cloud Firestore</b> 後，把網頁 App 的設定整段貼到下面（需含 <b>apiKey</b> 與 <b>projectId</b>，不需要 databaseURL）。
+      「房號」自訂一組不易猜到的字串當密碼，<b>每台裝置輸入相同房號</b>就會同步同一份資料。
+    </p>
+    <textarea id="cloud-cfg" class="dm-text" spellcheck="false" placeholder='貼上 Firebase 設定，例如：&#10;{&#10;  apiKey: "...",&#10;  authDomain: "...",&#10;  projectId: "...",&#10;  appId: "..."&#10;}'></textarea>
+    <div class="cloud-room-row">
+      <label>房號</label>
+      <input id="cloud-room" class="fld" placeholder="例如 class301-9f3k2" autocomplete="off">
+    </div>
+    <div class="modal-act">
+      <button class="m-no" id="cloud-close">關閉</button>
+      <button class="m-extra" id="cloud-disc">中斷雲端</button>
+      <button class="m-ok" id="cloud-go">連線並儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const KEY='auction-points-v1';
+  const CFGKEY='auction-fb-cfg-v1';
+  let state={students:[]};
+
+  /* Firebase 同步狀態 */
+  let fb={connected:false, write:null, unsub:null, room:'', applying:false};
+
+  /* ---------- 本機保存：優先用 Claude 持久層，否則退回 localStorage（下載離線可用） ---------- */
+  async function saveLocal(){
+    const json=JSON.stringify(state);
+    try{
+      if(window.storage&&window.storage.set){await window.storage.set(KEY,json,false);return;}
+    }catch(e){}
+    try{localStorage.setItem(KEY,json);}catch(e){}
+  }
+  async function load(){
+    try{
+      if(window.storage&&window.storage.get){
+        const r=await window.storage.get(KEY,false);
+        if(r&&r.value){state=JSON.parse(r.value);return;}
+      }
+    }catch(e){}
+    try{const v=localStorage.getItem(KEY);if(v)state=JSON.parse(v);}catch(e){}
+  }
+
+  const uid=()=>Math.random().toString(36).slice(2,9);
+
+  /* 自訂確認框，回傳 Promise<boolean> */
+  function ask(msg){
+    return new Promise(res=>{
+      const m=document.getElementById('modal');
+      document.getElementById('modal-msg').textContent=msg;
+      m.classList.add('show');
+      const ok=document.getElementById('modal-ok'), no=document.getElementById('modal-no');
+      const done=v=>{m.classList.remove('show');ok.onclick=null;no.onclick=null;res(v);};
+      ok.onclick=()=>done(true);
+      no.onclick=()=>done(false);
+    });
+  }
+
+  /* ---------- 匯出 / 匯入 ---------- */
+  function stampStr(){const d=new Date(),p=n=>String(n).padStart(2,'0');
+    return ''+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes());}
+
+  function download(filename,text,mime){
+    try{
+      const url=URL.createObjectURL(new Blob([text],{type:mime||'text/plain;charset=utf-8'}));
+      const a=document.createElement('a');a.href=url;a.download=filename;
+      document.body.appendChild(a);a.click();
+      setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},100);
+    }catch(e){}
+  }
+  function copyText(t){
+    const ta=document.getElementById('dm-text');
+    try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t);} }catch(e){}
+    try{ta.focus();ta.select();ta.setSelectionRange(0,t.length);document.execCommand('copy');}catch(e){}
+  }
+
+  function dmButtons(defs){
+    const act=document.getElementById('dm-act');act.innerHTML='';
+    defs.forEach(d=>{const b=document.createElement('button');b.className=d.cls;b.textContent=d.label;b.onclick=d.fn;act.appendChild(b);});
+  }
+  function openData(o){
+    document.getElementById('dm-title').textContent=o.title;
+    const ta=document.getElementById('dm-text');
+    ta.value=o.text||'';ta.readOnly=!!o.readonly;ta.placeholder=o.placeholder||'';
+    dmButtons(o.buttons);
+    document.getElementById('datamodal').classList.add('show');
+  }
+  const closeData=()=>document.getElementById('datamodal').classList.remove('show');
+
+  function exportJSON(){
+    if(!state.students.length){ask('目前沒有任何學生可以匯出。');return;}
+    const text=JSON.stringify(state,null,2), fn='拍賣會存檔_'+stampStr()+'.json';
+    openData({title:'匯出存檔（JSON）— 用來備份與還原全部資料',readonly:true,text,buttons:[
+      {cls:'m-no',label:'關閉',fn:closeData},
+      {cls:'m-extra',label:'全選複製',fn:()=>copyText(text)},
+      {cls:'m-ok',label:'下載檔案',fn:()=>download(fn,text,'application/json;charset=utf-8')}
+    ]});
+  }
+  function csvCell(v){v=String(v);return /[",\r\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+  function exportCSV(){
+    if(!state.students.length){ask('目前沒有任何學生可以匯出。');return;}
+    const head=['姓名','起始點數','目前餘額','本場待扣','累計已扣'];
+    const rows=state.students.map(s=>[s.name,s.init,s.balance,pendTotal(s),s.deducted]);
+    const csv=[head].concat(rows).map(r=>r.map(csvCell).join(',')).join('\r\n');
+    const fn='拍賣會名單_'+stampStr()+'.csv';
+    openData({title:'匯出名單（CSV，可用 Excel 開啟）',readonly:true,text:csv,buttons:[
+      {cls:'m-no',label:'關閉',fn:closeData},
+      {cls:'m-extra',label:'全選複製',fn:()=>copyText(csv)},
+      {cls:'m-ok',label:'下載檔案',fn:()=>download(fn,'\ufeff'+csv,'text/csv;charset=utf-8')}
+    ]});
+  }
+  function openImport(){
+    openData({title:'匯入存檔：選擇 .json 檔，或把存檔內容貼進來',readonly:false,text:'',
+      placeholder:'在此貼上 JSON 存檔內容…',buttons:[
+        {cls:'m-no',label:'取消',fn:closeData},
+        {cls:'m-extra',label:'選擇檔案',fn:()=>document.getElementById('dm-file').click()},
+        {cls:'m-ok',label:'匯入',fn:doImport}
+      ]});
+  }
+  async function doImport(){
+    const raw=document.getElementById('dm-text').value.trim();
+    if(!raw){await ask('請先貼上存檔內容或選擇檔案。');return;}
+    let data;try{data=JSON.parse(raw);}catch(e){await ask('內容不是有效的存檔格式，請確認後再試。');return;}
+    if(!data||!Array.isArray(data.students)){await ask('找不到學生名單，這份檔案可能不是本工具的存檔。');return;}
+    closeData();
+    if(state.students.length && !(await ask('匯入會覆蓋目前畫面上的所有資料，確定？')))return;
+    state=normalize(data);
+    commit();
+  }
+
+  /* ---------- 雲端同步（Firebase Realtime Database） ---------- */
+  function setCloudStatus(txt,cls){
+    const el=document.getElementById('cloudStat');
+    if(el){el.textContent=txt;el.className='cloudstat '+(cls||'');}
+  }
+  function parseFbConfig(text){
+    const cfg={}, keys=['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId'];
+    keys.forEach(k=>{const m=text.match(new RegExp(k+'\\s*:\\s*["\\\']([^"\\\']+)["\\\']'));if(m)cfg[k]=m[1];});
+    return cfg;
+  }
+  function normalize(val){
+    const arr=Array.isArray(val&&val.students)?val.students:[];
+    return {students:arr.map(s=>({
+      id:s.id||uid(),name:String(s.name||'未命名'),
+      init:Math.max(0,parseInt(s.init,10)||0),
+      balance:(s.balance!=null?Math.round(+s.balance):(parseInt(s.init,10)||0)),
+      deducted:Math.max(0,Math.round(+s.deducted)||0),
+      pending:Array.isArray(s.pending)?s.pending.map(p=>({id:p.id||uid(),label:String(p.label||'競標'),points:Math.round(+p.points)||0})):[]
+    }))};
+  }
+  async function connectFirebase(cfg,room,seedIfEmpty){
+    setCloudStatus('連線中…','wait');
+    let appMod,fsMod;
+    try{
+      appMod=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+      fsMod =await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    }catch(e){setCloudStatus('載入 Firebase 失敗（請確認此頁是用網址開啟，而非本機檔案）','err');return false;}
+    try{
+      if(fb.unsub){try{fb.unsub();}catch(e){}}
+      const app=appMod.initializeApp(cfg, 'app_'+Date.now());
+      const db=fsMod.getFirestore(app);
+      const ref=fsMod.doc(db,'rooms',room);
+      fb.write=(s)=>fsMod.setDoc(ref,s);
+      fb.unsub=fsMod.onSnapshot(ref,snap=>{
+        if(snap.exists()){
+          fb.applying=true; state=normalize(snap.data()); saveLocal(); render(); fb.applying=false;
+          setCloudStatus('已連線 · 房號「'+room+'」','ok');
+        }else{
+          if(seedIfEmpty){try{fb.write(state);}catch(e){}}
+          setCloudStatus('已連線 · 房號「'+room+'」（雲端空白，已上傳目前名單）','ok');
+        }
+      },err=>{ setCloudStatus('連線被拒：請檢查 Firestore 安全規則','err'); });
+      fb.connected=true; fb.room=room;
+      localStorage.setItem(CFGKEY,JSON.stringify({cfg,room}));
+      return true;
+    }catch(e){ setCloudStatus('連線失敗：'+(e&&e.message||e),'err'); return false; }
+  }
+  function disconnectFirebase(){
+    if(fb.unsub){try{fb.unsub();}catch(e){}}
+    fb={connected:false,write:null,unsub:null,room:'',applying:false};
+    try{localStorage.removeItem(CFGKEY);}catch(e){}
+    setCloudStatus('未連線（僅存本機）','');
+  }
+  function openCloud(){
+    let saved={}; try{saved=JSON.parse(localStorage.getItem(CFGKEY))||{};}catch(e){}
+    document.getElementById('cloud-cfg').value=saved.cfg?JSON.stringify(saved.cfg,null,2):'';
+    document.getElementById('cloud-room').value=saved.room||'';
+    document.getElementById('cloudmodal').classList.add('show');
+  }
+  const closeCloud=()=>document.getElementById('cloudmodal').classList.remove('show');
+  async function doCloudConnect(){
+    const raw=document.getElementById('cloud-cfg').value.trim();
+    const room=document.getElementById('cloud-room').value.trim();
+    if(!room){await ask('請設定一個「房號」（各裝置要輸入相同房號才會同步）。');return;}
+    const cfg=parseFbConfig(raw);
+    if(!cfg.apiKey||!cfg.projectId){
+      await ask('設定不完整：至少需要 apiKey 與 projectId。請貼上 Firebase 網頁 App 的完整設定。');return;
+    }
+    closeCloud();
+    const ok=await connectFirebase(cfg,room,true);
+    if(ok)commit();
+  }
+  async function autoCloud(){
+    let saved=null; try{saved=JSON.parse(localStorage.getItem(CFGKEY));}catch(e){}
+    if(saved&&saved.cfg&&saved.room){ await connectFirebase(saved.cfg,saved.room,false); }
+    else setCloudStatus('未連線（僅存本機）','');
+  }
+  const pendTotal=s=>s.pending.reduce((a,p)=>a+(+p.points||0),0);
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  /* ---------- 操作 ---------- */
+  function addStudent(){
+    const n=document.getElementById('s_name');
+    const i=document.getElementById('s_init');
+    const name=n.value.trim(); if(!name)return n.focus();
+    const init=Math.max(0,parseInt(i.value,10)||0);
+    state.students.push({id:uid(),name,balance:init,init,pending:[],deducted:0});
+    n.value=''; n.focus(); commit();
+  }
+  async function removeStudent(id){
+    const s=state.students.find(x=>x.id===id);
+    if(s && !(await ask('刪除「'+s.name+'」？此學生的所有記錄會消失。')))return;
+    state.students=state.students.filter(x=>x.id!==id); commit();
+  }
+  function addPending(id,label,points){
+    const p=Math.round(+points); if(!p)return;
+    const s=state.students.find(x=>x.id===id); if(!s)return;
+    s.pending.push({id:uid(),label:(label||'').trim()||'競標',points:p}); commit();
+  }
+  function removePending(sid,pid){
+    const s=state.students.find(x=>x.id===sid); if(!s)return;
+    s.pending=s.pending.filter(p=>p.id!==pid); commit();
+  }
+  function setInit(id,val){
+    const s=state.students.find(x=>x.id===id); if(!s)return;
+    const v=Math.max(0,parseInt(val,10)||0);
+    s.balance += (v-s.init); s.init=v;        // 同步調整目前餘額
+    commit();
+  }
+  async function settleAll(){
+    const tot=state.students.reduce((a,s)=>a+pendTotal(s),0);
+    if(tot<=0)return;
+    if(!(await ask('確定要一次扣除全部待扣點數（共 '+tot+' 點）嗎？')))return;
+    state.students.forEach(s=>{const t=pendTotal(s);s.balance-=t;s.deducted+=t;s.pending=[];});
+    document.getElementById('gavel').classList.remove('bang');void document.getElementById('gavel').offsetWidth;
+    document.getElementById('gavel').classList.add('bang');
+    const st=document.getElementById('stamp');st.classList.remove('show');void st.offsetWidth;st.classList.add('show');
+    commit();
+  }
+  async function clearAll(){
+    if(!state.students.length)return;
+    if(!(await ask('清空所有學生與記錄？此動作無法復原。')))return;
+    state.students=[]; commit();
+  }
+
+  function commit(){
+    saveLocal();
+    if(fb.connected && fb.write && !fb.applying){ try{fb.write(state);}catch(e){} }
+    render();
+  }
+
+  /* ---------- 畫面 ---------- */
+  function render(){
+    const grid=document.getElementById('grid');
+    const empty=document.getElementById('empty');
+    const totPend=state.students.reduce((a,s)=>a+pendTotal(s),0);
+    document.getElementById('t_pend').textContent=totPend;
+    document.getElementById('t_stu').textContent=state.students.length;
+    document.getElementById('settleBtn').disabled=totPend<=0;
+    empty.style.display=state.students.length?'none':'block';
+
+    grid.innerHTML=state.students.map(s=>{
+      const pt=pendTotal(s);
+      const remain=s.balance-pt;
+      const over=remain<0;
+      const items=s.pending.map(p=>
+        `<div class="pitem"><span class="plab">${esc(p.label)}</span>`+
+        `<span class="pval">−${p.points}</span>`+
+        `<button class="x" data-act="rmpend" data-s="${s.id}" data-p="${p.id}" title="移除">✕</button></div>`
+      ).join('');
+      return `<div class="card ${over?'over':''}">
+        <div class="crow">
+          <span class="cname">${esc(s.name)}</span>
+          <span class="cinit">起始 <input type="number" min="0" value="${s.init}" data-act="init" data-s="${s.id}"> 點</span>
+          <button class="x-stu" data-act="rmstu" data-s="${s.id}" title="刪除學生">✕</button>
+        </div>
+        <div class="remain">
+          <div class="big">${remain}</div>
+          <div class="lab">預估剩餘點數${over?'<b>已超扣 '+(-remain)+' 點</b>':''}</div>
+        </div>
+        <div class="pend">${items}</div>
+        <div class="chips">
+          ${[5,10,20,50,100].map(v=>`<button class="chip" data-act="quick" data-s="${s.id}" data-v="${v}">−${v}</button>`).join('')}
+        </div>
+        <div class="addline">
+          <input class="lab" placeholder="品項（可留空）" data-s="${s.id}" data-role="lab">
+          <input class="num" type="number" placeholder="點數" data-s="${s.id}" data-role="num">
+          <button data-act="addpend" data-s="${s.id}">加扣</button>
+        </div>
+        <div class="cfoot"><span>本場待扣 <b>${pt}</b> 點</span><span>累計已扣 <b>${s.deducted}</b> 點</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ---------- 事件代理 ---------- */
+  document.getElementById('grid').addEventListener('click',e=>{
+    const b=e.target.closest('[data-act]'); if(!b)return;
+    const act=b.dataset.act, sid=b.dataset.s;
+    if(act==='rmstu')removeStudent(sid);
+    else if(act==='rmpend')removePending(sid,b.dataset.p);
+    else if(act==='quick')addPending(sid,'競標',+b.dataset.v);
+    else if(act==='addpend'){
+      const card=b.closest('.card');
+      const lab=card.querySelector('input[data-role="lab"]');
+      const num=card.querySelector('input[data-role="num"]');
+      addPending(sid,lab.value,num.value);
+      lab.value='';num.value='';num.focus();
+    }
+  });
+  document.getElementById('grid').addEventListener('change',e=>{
+    const b=e.target.closest('[data-act="init"]'); if(b)setInit(b.dataset.s,b.value);
+  });
+  document.getElementById('grid').addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;
+    const num=e.target.closest('input[data-role="num"]');
+    if(num){const card=num.closest('.card');card.querySelector('[data-act="addpend"]').click();}
+  });
+
+  document.getElementById('addBtn').addEventListener('click',addStudent);
+  document.getElementById('s_name').addEventListener('keydown',e=>{if(e.key==='Enter')addStudent();});
+  document.getElementById('settleBtn').addEventListener('click',settleAll);
+  document.getElementById('clearBtn').addEventListener('click',clearAll);
+  document.getElementById('expJson').addEventListener('click',exportJSON);
+  document.getElementById('expCsv').addEventListener('click',exportCSV);
+  document.getElementById('impBtn').addEventListener('click',openImport);
+  document.getElementById('dm-file').addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{document.getElementById('dm-text').value=r.result;};
+    r.readAsText(f);e.target.value='';
+  });
+  document.getElementById('cloudBtn').addEventListener('click',openCloud);
+  document.getElementById('cloud-close').addEventListener('click',closeCloud);
+  document.getElementById('cloud-go').addEventListener('click',doCloudConnect);
+  document.getElementById('cloud-disc').addEventListener('click',()=>{disconnectFirebase();closeCloud();});
+
+  load().then(()=>{ render(); autoCloud(); });
+})();
+</script>
+</body>
+</html>
