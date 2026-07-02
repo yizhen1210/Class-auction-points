@@ -38,7 +38,7 @@
 
   /* ---------- 抬頭 ---------- */
   header.top{
-    display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+    display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:18px;
     padding:18px 20px;border:1px solid var(--line);border-radius:18px;
     background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.10));
     box-shadow:var(--shadow);
@@ -79,7 +79,7 @@
 
   /* ---------- 新增學生列 ---------- */
   .addbar{
-    margin:18px 0 16px;display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;
+    margin:0 0 16px;display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;
     padding:12px 14px;border:1px dashed var(--line);border-radius:14px;
     background:rgba(0,0,0,.14);
   }
@@ -208,10 +208,14 @@
   /* 密碼提示框：依規格表的尺寸/間距（顏色沿用主題、不變） */
   #cloudmodal .modal-box{width:min(520px,90vw);max-width:none;padding:36px 44px;border-radius:20px;}
   #cloudmodal .modal-msg{text-align:center;font-size:22.4px;font-weight:600;color:#646b64;margin:0 0 22px;white-space:nowrap;}
-  #cloudmodal .cloud-login{margin:0 0 24px;}
+  #cloudmodal .cloud-login{margin:0 0 14px;}
+  .ime-hint{text-align:center;font-size:15px;color:var(--muted);margin:0 0 20px;}
+  .ime-hint.warn{color:var(--red);font-weight:700;}
+  .ime-hint b{font-weight:700;}
   #cloudmodal #cloud-pw{
     flex:1;width:100%;text-align:center;font-size:17.6px;padding:12px 18px;
     border:2px solid #d9cdab;border-radius:14px;background:#fff;color:var(--text);box-shadow:none;
+    -webkit-text-security:disc;text-security:disc;
   }
   #cloudmodal #cloud-pw::placeholder{color:#b0a585;}
   #cloudmodal #cloud-pw:focus{border-color:var(--brass);box-shadow:0 0 0 3px rgba(200,150,43,.22);}
@@ -242,6 +246,13 @@
   #projBtn:active,#logoutBtn:active{transform:translateY(1px);}
   /* 未登入時不顯示「新增學生」欄位 */
   body:not(.auth-in) .addbar{display:none!important;}
+  /* 未登入＝唯讀：可看點數，不能加扣/結算/刪除/改起始 */
+  body:not(.auth-in) .chips,
+  body:not(.auth-in) .addline,
+  body:not(.auth-in) .x-stu,
+  body:not(.auth-in) .pitem .x,
+  body:not(.auth-in) #settleBtn{display:none!important;}
+  body:not(.auth-in) .cinit input{pointer-events:none;border-bottom:none;color:var(--muted);}
   #modal{z-index:70;}                 /* 確認框永遠蓋在資料視窗之上 */
   .m-extra{background:transparent;border:1px solid var(--brass);color:var(--brass-deep);}
   .m-extra:active{transform:translateY(1px);}
@@ -288,7 +299,7 @@
     transition:background .15s,border-color .15s;
   }
   .display-mode #projBtn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.95);}
-  .display-mode .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;margin-top:28px;}
+  .display-mode .grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;margin-top:8px;}
   .sb-pend{color:var(--brass-deep);font-weight:700;}
 
   /* 扣點當下：卡片亮橘金框 + 外光暈 + 放大（維持約 3 秒，明顯） */
@@ -350,6 +361,7 @@
     #touchBanner{font-size:20px;padding:10px 18px;top:12px;max-width:92vw;text-align:center;}
     /* 字級 ≥16px：避免 iOS 點輸入框時自動放大頁面 */
     .addline input.lab,.addline input.num,.cinit input{font-size:16px;}
+    .ime-hint{display:none;}     /* 中/英指示只在電腦顯示 */
     .display-mode .title h1{font-size:30px;}
     .display-mode .sb-remain{font-size:52px;}
   }
@@ -376,9 +388,9 @@
   <div class="addbar">
     <div class="ab-fields">
       <label>新增學生</label>
-      <input class="fld" id="s_name" placeholder="姓名 / 組別" maxlength="20">
+      <input class="fld" id="s_name" placeholder="姓名 / 組別" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
       <label class="ab-initlabel">起始點數</label>
-      <input class="fld" id="s_init" type="number" value="100" min="0" step="1">
+      <input class="fld" id="s_init" type="number" value="100" min="0" step="1" inputmode="numeric" autocomplete="off">
       <button class="btn" id="addBtn">＋ 加入</button>
     </div>
     <div class="addbar-tools">
@@ -414,8 +426,9 @@
   <div class="modal-box big">
     <p class="modal-msg">請輸入老師專屬密碼才能編輯：</p>
     <div class="cloud-login">
-      <input id="cloud-pw" class="fld" type="password" placeholder="密碼" autocomplete="current-password">
+      <input id="cloud-pw" class="fld" type="text" placeholder="密碼" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </div>
+    <div class="ime-hint" id="imeHint">鍵盤：英數</div>
     <div class="modal-act">
       <button id="cloud-login">確定</button>
       <button class="m-no" id="cloud-close">取消</button>
@@ -513,9 +526,10 @@
       pending:Array.isArray(s.pending)?s.pending.map(p=>({id:p.id||uid(),label:String(p.label||'競標'),points:Math.round(+p.points)||0})):[]
     }))};
   }
-  // 確保 Firebase App 與 Auth 已初始化（只做一次）
+  // 確保 Firebase 已初始化並訂閱資料（只做一次）。讀取公開、寫入需登入。
+  const ROOM_ID='main';
   async function ensureFb(cfg){
-    if(fb.auth) return true;
+    if(fb.db) return true;
     setCloudStatus('連線中…','wait');
     let appMod,fsMod,authMod;
     try{
@@ -529,26 +543,28 @@
       fb.db=fsMod.getFirestore(app);
       fb.auth=authMod.getAuth(app);
       localStorage.setItem(CFGKEY,JSON.stringify({cfg}));
-      // 登入狀態改變時，自動訂閱／取消該帳號的資料
-      authMod.onAuthStateChanged(fb.auth, user=>{
-        if(fb.unsub){try{fb.unsub();}catch(e){} fb.unsub=null;}
-        if(user){
-          fb.connected=true; fb.user=user;
-          document.body.classList.add('auth-in');
-          const ref=fsMod.doc(fb.db,'rooms',user.uid);
-          fb.write=(s)=>fsMod.setDoc(ref,s);
-          fb.unsub=fsMod.onSnapshot(ref,snap=>{
-            if(snap.exists()){
-              fb.applying=true; state=normalize(snap.data()); saveLocal(); render(); fb.applying=false;
-            }else{ try{fb.write(state);}catch(e){} }  // 首次：把本機名單上傳
-            setCloudStatus('已登入 · '+user.email,'ok');
-          }, err=>setCloudStatus('讀取被拒：請檢查 Firestore 安全規則','err'));
-          setCloudStatus('已登入 · '+user.email,'ok');
-        }else{
-          fb.connected=false; fb.user=null; fb.write=null;
-          document.body.classList.remove('auth-in');
-          setCloudStatus('請登入','wait');
+
+      // 訂閱固定文件：不論有無登入都能即時接收（公開讀取）
+      const ref=fsMod.doc(fb.db,'rooms',ROOM_ID);
+      fb.write=(s)=>fsMod.setDoc(ref,s);
+      fb.unsub=fsMod.onSnapshot(ref,snap=>{
+        fb.docExists=snap.exists();
+        if(snap.exists()){
+          fb.applying=true; state=normalize(snap.data()); saveLocal(); render(); fb.applying=false;
+        }else if(fb.user && state.students.length){   // 雲端空白且已登入 → 用本機名單當種子
+          try{fb.write(state);}catch(e){}
         }
+        setCloudStatus(fb.user?('已登入 · '+fb.user.email):'查看模式（未登入）', fb.user?'ok':'');
+      }, err=>setCloudStatus('讀取被拒：請確認 Firestore 規則已開放讀取','err'));
+
+      // 登入狀態只決定「能不能編輯」，與訂閱無關
+      authMod.onAuthStateChanged(fb.auth, user=>{
+        fb.user=user||null; fb.connected=!!user;
+        document.body.classList.toggle('auth-in', !!user);
+        if(user && fb.docExists===false && state.students.length){   // 登入時雲端仍空 → 推上本機名單
+          try{fb.write(state);}catch(e){}
+        }
+        setCloudStatus(user?('已登入 · '+user.email):'查看模式（未登入）', user?'ok':'');
       });
       return true;
     }catch(e){ setCloudStatus('初始化失敗：'+(e&&e.message||e),'err'); return false; }
@@ -587,16 +603,31 @@
   }
   async function cloudLogout(){
     if(fb.auth&&fb.authMod){ try{await fb.authMod.signOut(fb.auth);}catch(e){} }
-    if(fb.unsub){try{fb.unsub();}catch(e){} fb.unsub=null;}
-    fb.connected=false; fb.user=null; fb.write=null;
-    setCloudStatus('已登出（僅存本機）','');
+    fb.user=null; fb.connected=false;                 // 訂閱保留 → 仍可即時查看
+    document.body.classList.remove('auth-in');
+    setCloudStatus('查看模式（未登入）','');
     closeCloud();
   }
   function openCloud(){
     document.getElementById('cloud-pw').value='';
+    setImeHint('英數');
     document.getElementById('cloudmodal').classList.add('show');
     setTimeout(()=>{try{document.getElementById('cloud-pw').focus();}catch(e){}},50);
   }
+  /* 密碼框中/英偵測（瀏覽器讀不到系統鍵盤語言，改由輸入內容判斷） */
+  function setImeHint(mode){
+    const h=document.getElementById('imeHint'); if(!h)return;
+    h.innerHTML='鍵盤：<b>'+mode+'</b>';
+    h.classList.toggle('warn', mode==='中文');
+  }
+  (function(){
+    const pw=document.getElementById('cloud-pw'); if(!pw)return;
+    const hasCJK=s=>/[\u3400-\u9fff\uff00-\uffef\u3000-\u303f]/.test(s);
+    const check=()=>setImeHint(pw.value && hasCJK(pw.value) ? '中文' : '英數');
+    pw.addEventListener('compositionstart',()=>setImeHint('中文'));  // 中文輸入法啟動組字
+    pw.addEventListener('input',check);
+    pw.addEventListener('focus',check);
+  })();
   const closeCloud=()=>document.getElementById('cloudmodal').classList.remove('show');
   async function autoCloud(){
     const emb=embeddedCfg();
@@ -658,7 +689,7 @@
 
   function commit(){
     saveLocal();
-    if(fb.connected && fb.write && !fb.applying){ try{fb.write(state);}catch(e){} }
+    if(fb.user && fb.write && !fb.applying){ try{fb.write(state);}catch(e){} }
     render();
   }
 
@@ -698,7 +729,7 @@
       return `<div class="card ${over?'over':''}" data-card="${s.id}">
         <div class="crow">
           <span class="cname">${esc(s.name)}</span>
-          <span class="cinit">起始 <input type="number" min="0" value="${s.init}" data-act="init" data-s="${s.id}" style="width:calc(${Math.max(1,String(s.init).length)}ch + 10px)"> 點</span>
+          <span class="cinit">起始 <input type="number" min="0" value="${s.init}" data-act="init" data-s="${s.id}" inputmode="numeric" autocomplete="off" style="width:calc(${Math.max(1,String(s.init).length)}ch + 10px)"> 點</span>
           <button class="x-stu" data-act="rmstu" data-s="${s.id}" title="刪除學生">✕</button>
         </div>
         <div class="remain">
@@ -710,8 +741,8 @@
           ${[5,10,20,50,100].map(v=>`<button class="chip" data-act="quick" data-s="${s.id}" data-v="${v}">−${v}</button>`).join('')}
         </div>
         <div class="addline">
-          <input class="lab" placeholder="品項（可留空）" data-s="${s.id}" data-role="lab">
-          <input class="num" type="number" placeholder="點數" data-s="${s.id}" data-role="num">
+          <input class="lab" placeholder="品項（可留空）" data-s="${s.id}" data-role="lab" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <input class="num" type="number" placeholder="點數" data-s="${s.id}" data-role="num" inputmode="numeric" autocomplete="off">
           <button data-act="addpend" data-s="${s.id}">加扣</button>
         </div>
         <div class="cfoot"><span>本場待扣 <b>${pt}</b> 點</span><span>累計已扣 <b>${s.deducted}</b> 點</span></div>
