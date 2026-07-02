@@ -1,0 +1,14 @@
+{
+  "name": "拍賣會計點檯",
+  "short_name": "計點檯",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1c2420",
+  "theme_color": "#1c2420",
+  "icons": [
+    { "src": "06_auction_tally_192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "06_auction_tally_512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
