@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>拍賣會記點檯</title>
+<title>拍賣會計點檯</title>
 <style>
   @import url('https://cdn.jsdelivr.net/npm/@fontsource/iansui@5.2.8/index.css');
 
@@ -209,13 +209,10 @@
   #cloudmodal .modal-box{width:min(520px,90vw);max-width:none;padding:36px 44px;border-radius:20px;}
   #cloudmodal .modal-msg{text-align:center;font-size:22.4px;font-weight:600;color:#646b64;margin:0 0 22px;white-space:nowrap;}
   #cloudmodal .cloud-login{margin:0 0 14px;}
-  .ime-hint{text-align:center;font-size:15px;color:var(--muted);margin:0 0 20px;}
-  .ime-hint.warn{color:var(--red);font-weight:700;}
-  .ime-hint b{font-weight:700;}
+  .ime-hint{text-align:center;font-size:14px;color:var(--red);font-weight:600;margin:-6px 0 18px;}
   #cloudmodal #cloud-pw{
     flex:1;width:100%;text-align:center;font-size:17.6px;padding:12px 18px;
     border:2px solid #d9cdab;border-radius:14px;background:#fff;color:var(--text);box-shadow:none;
-    -webkit-text-security:disc;text-security:disc;
   }
   #cloudmodal #cloud-pw::placeholder{color:#b0a585;}
   #cloudmodal #cloud-pw:focus{border-color:var(--brass);box-shadow:0 0 0 3px rgba(200,150,43,.22);}
@@ -375,7 +372,7 @@
   <header class="top">
     <div class="gavel" id="gavel">🔨</div>
     <div class="title">
-      <h1>拍賣會記點檯</h1>
+      <h1>拍賣會計點檯</h1>
       <p>喊價當下即時記錄、即時顯示剩餘點數，全部喊完再一鍵結算扣除。</p>
     </div>
     <div class="totals">
@@ -426,8 +423,9 @@
   <div class="modal-box big">
     <p class="modal-msg">請輸入老師專屬密碼才能編輯：</p>
     <div class="cloud-login">
-      <input id="cloud-pw" class="fld" type="text" placeholder="密碼" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input id="cloud-pw" class="fld" type="password" placeholder="密碼" autocomplete="current-password">
     </div>
+    <p class="ime-hint" id="imeHint" style="display:none;">偵測到中文輸入法，密碼請切換為英數</p>
     <div class="modal-act">
       <button id="cloud-login">確定</button>
       <button class="m-no" id="cloud-close">取消</button>
@@ -609,23 +607,23 @@
   }
   function openCloud(){
     document.getElementById('cloud-pw').value='';
-    setImeHint('英數');
+    setImeHint(false);
     document.getElementById('cloudmodal').classList.add('show');
     setTimeout(()=>{try{document.getElementById('cloud-pw').focus();}catch(e){}},50);
   }
-  /* 密碼框中/英偵測（瀏覽器讀不到系統鍵盤語言，改由輸入內容判斷） */
-  function setImeHint(mode){
+  /* 密碼框：偵測到中文輸入就顯示提示（瀏覽器讀不到系統鍵盤語言，改由輸入內容判斷） */
+  function setImeHint(isChinese){
     const h=document.getElementById('imeHint'); if(!h)return;
-    h.innerHTML='鍵盤：<b>'+mode+'</b>';
-    h.classList.toggle('warn', mode==='中文');
+    h.style.display = isChinese ? '' : 'none';
   }
   (function(){
     const pw=document.getElementById('cloud-pw'); if(!pw)return;
     const hasCJK=s=>/[\u3400-\u9fff\uff00-\uffef\u3000-\u303f]/.test(s);
-    const check=()=>setImeHint(pw.value && hasCJK(pw.value) ? '中文' : '英數');
-    pw.addEventListener('compositionstart',()=>setImeHint('中文'));  // 中文輸入法啟動組字
-    pw.addEventListener('input',check);
-    pw.addEventListener('focus',check);
+    let composing=false;
+    pw.addEventListener('compositionstart',()=>{composing=true; setImeHint(true);});
+    pw.addEventListener('compositionend',()=>{composing=false; setImeHint(hasCJK(pw.value));});
+    pw.addEventListener('input',()=>setImeHint(composing || hasCJK(pw.value)));
+    pw.addEventListener('focus',()=>setImeHint(hasCJK(pw.value)));
   })();
   const closeCloud=()=>document.getElementById('cloudmodal').classList.remove('show');
   async function autoCloud(){
